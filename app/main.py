@@ -8,6 +8,7 @@ from contextlib import asynccontextmanager
 from app.core.config import get_settings
 from app.database.connection import get_db, create_tables
 from app.api.v1.router import api_router
+from app.api.middleware.rate_limitting import AuthRateLimitMiddleware
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -49,6 +50,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Add rate limiting middleware for auth endpoints
+app.add_middleware(AuthRateLimitMiddleware)
 
 
 @app.get("/health")

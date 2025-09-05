@@ -1,0 +1,40 @@
+# Core ML and Data Science
+scikit-learn
+pandas
+numpy<2
+matplotlib
+seaborn
+statsmodels
+
+# HuggingFace and Transformers
+transformers
+torch
+tokenizers
+datasets
+
+# Text Processing and NLP
+nltk
+spacy
+textblob
+vaderSentiment
+
+# API Framework
+fastapi
+uvicorn
+pydantic
+
+# Monitoring and Logging
+mlflow
+wandb
+prometheus-client
+
+# Utilities
+python-dotenv
+requests
+tqdm
+joblib
+
+# Development
+pytest
+black
+flake8

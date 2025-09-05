@@ -1,0 +1,272 @@
+[
+  {
+    "id": 1,
+    "text": "I cannot access my account. It says my password is incorrect.",
+    "category": "account",
+    "sentiment": "negative"
+  },
+  {
+    "id": 2,
+    "text": "I was charged $50 extra on my monthly bill. This is incorrect.",
+    "category": "billing",
+    "sentiment": "negative"
+  },
+  {
+    "id": 3,
+    "text": "The app keeps crashing when I try to upload files.",
+    "category": "bug",
+    "sentiment": "negative"
+  },
+  {
+    "id": 4,
+    "text": "I would like to request a new feature for dark mode.",
+    "category": "feature",
+    "sentiment": "positive"
+  },
+  {
+    "id": 5,
+    "text": "How do I set up two-factor authentication?",
+    "category": "technical",
+    "sentiment": "neutral"
+  },
+  {
+    "id": 6,
+    "text": "Thank you for fixing the issue so quickly!",
+    "category": "general",
+    "sentiment": "positive"
+  },
+  {
+    "id": 7,
+    "text": "My subscription was renewed but I didn't authorize it.",
+    "category": "billing",
+    "sentiment": "negative"
+  },
+  {
+    "id": 8,
+    "text": "The search function is not working properly.",
+    "category": "bug",
+    "sentiment": "negative"
+  },
+  {
+    "id": 9,
+    "text": "Can you add support for mobile notifications?",
+    "category": "feature",
+    "sentiment": "positive"
+  },
+  {
+    "id": 10,
+    "text": "I need help configuring my email settings.",
+    "category": "technical",
+    "sentiment": "neutral"
+  },
+  {
+    "id": 11,
+    "text": "My account was suspended without warning.",
+    "category": "account",
+    "sentiment": "negative"
+  },
+  {
+    "id": 12,
+    "text": "The new update is amazing! Great work!",
+    "category": "general",
+    "sentiment": "positive"
+  },
+  {
+    "id": 13,
+    "text": "I'm getting error 404 when trying to access the dashboard.",
+    "category": "bug",
+    "sentiment": "negative"
+  },
+  {
+    "id": 14,
+    "text": "Please add integration with Google Calendar.",
+    "category": "feature",
+    "sentiment": "positive"
+  },
+  {
+    "id": 15,
+    "text": "How do I export my data?",
+    "category": "technical",
+    "sentiment": "neutral"
+  },
+  {
+    "id": 16,
+    "text": "I forgot my password and cannot reset it.",
+    "category": "account",
+    "sentiment": "negative"
+  },
+  {
+    "id": 17,
+    "text": "My billing cycle was changed without notification.",
+    "category": "billing",
+    "sentiment": "negative"
+  },
+  {
+    "id": 18,
+    "text": "The application freezes every time I open it.",
+    "category": "bug",
+    "sentiment": "negative"
+  },
+  {
+    "id": 19,
+    "text": "I would like to suggest adding a calendar feature.",
+    "category": "feature",
+    "sentiment": "positive"
+  },
+  {
+    "id": 20,
+    "text": "Can you help me install the mobile app?",
+    "category": "technical",
+    "sentiment": "neutral"
+  },
+  {
+    "id": 21,
+    "text": "Great service! Everything works perfectly.",
+    "category": "general",
+    "sentiment": "positive"
+  },
+  {
+    "id": 22,
+    "text": "I was overcharged by $25 on my last payment.",
+    "category": "billing",
+    "sentiment": "negative"
+  },
+  {
+    "id": 23,
+    "text": "The login page is not loading properly.",
+    "category": "account",
+    "sentiment": "negative"
+  },
+  {
+    "id": 24,
+    "text": "The system is running very slowly today.",
+    "category": "bug",
+    "sentiment": "negative"
+  },
+  {
+    "id": 25,
+    "text": "Could you add support for multiple languages?",
+    "category": "feature",
+    "sentiment": "positive"
+  },
+  {
+    "id": 26,
+    "text": "I need assistance with setting up my profile.",
+    "category": "technical",
+    "sentiment": "neutral"
+  },
+  {
+    "id": 27,
+    "text": "The customer service has been excellent!",
+    "category": "general",
+    "sentiment": "positive"
+  },
+  {
+    "id": 28,
+    "text": "My account got locked after three failed login attempts.",
+    "category": "account",
+    "sentiment": "negative"
+  },
+  {
+    "id": 29,
+    "text": "I need a refund for the unused portion of my subscription.",
+    "category": "billing",
+    "sentiment": "negative"
+  },
+  {
+    "id": 30,
+    "text": "The database connection keeps timing out.",
+    "category": "bug",
+    "sentiment": "negative"
+  },
+  {
+    "id": 31,
+    "text": "It would be great to have a dark theme option.",
+    "category": "feature",
+    "sentiment": "positive"
+  },
+  {
+    "id": 32,
+    "text": "How do I configure the notification settings?",
+    "category": "technical",
+    "sentiment": "neutral"
+  },
+  {
+    "id": 33,
+    "text": "The new interface is much better than before!",
+    "category": "general",
+    "sentiment": "positive"
+  },
+  {
+    "id": 34,
+    "text": "I can't remember my username for login.",
+    "category": "account",
+    "sentiment": "negative"
+  },
+  {
+    "id": 35,
+    "text": "There's an unauthorized charge on my credit card.",
+    "category": "billing",
+    "sentiment": "negative"
+  },
+  {
+    "id": 36,
+    "text": "The file upload feature is broken.",
+    "category": "bug",
+    "sentiment": "negative"
+  },
+  {
+    "id": 37,
+    "text": "Please consider adding a backup feature.",
+    "category": "feature",
+    "sentiment": "positive"
+  },
+  {
+    "id": 38,
+    "text": "I need help with the initial setup process.",
+    "category": "technical",
+    "sentiment": "neutral"
+  },
+  {
+    "id": 39,
+    "text": "The performance has improved significantly!",
+    "category": "general",
+    "sentiment": "positive"
+  },
+  {
+    "id": 40,
+    "text": "My account was deleted by mistake.",
+    "category": "account",
+    "sentiment": "negative"
+  },
+  {
+    "id": 41,
+    "text": "The monthly fee increased without notice.",
+    "category": "billing",
+    "sentiment": "negative"
+  },
+  {
+    "id": 42,
+    "text": "The application crashes on startup.",
+    "category": "bug",
+    "sentiment": "negative"
+  },
+  {
+    "id": 43,
+    "text": "I'd like to request a new reporting feature.",
+    "category": "feature",
+    "sentiment": "positive"
+  },
+  {
+    "id": 44,
+    "text": "How do I update to the latest version?",
+    "category": "technical",
+    "sentiment": "neutral"
+  },
+  {
+    "id": 45,
+    "text": "The new features are exactly what I needed!",
+    "category": "general",
+    "sentiment": "positive"
+  }
+] 

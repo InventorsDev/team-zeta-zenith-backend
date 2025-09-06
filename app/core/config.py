@@ -52,6 +52,21 @@ class Settings(BaseSettings):
     # Logging
     log_level: str = "INFO"
 
+    # ML Configuration
+    ml_model_path: str = "models/"
+    ml_data_path: str = "data/"
+    ml_enable_bert: bool = True
+    ml_enable_monitoring: bool = True
+    ml_confidence_threshold: float = 0.7
+    ml_batch_size: int = 32
+
+    # ML Model Settings
+    bert_model_name: str = "bert-base-uncased"
+    max_sequence_length: int = 512
+    
+    # Slack Integration for ML Alerts
+    slack_webhook_url: Optional[str] = None
+
     @validator("backend_cors_origins", pre=True)
     def assemble_cors_origins(cls, v):
         if isinstance(v, str):

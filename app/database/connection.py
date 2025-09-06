@@ -16,7 +16,7 @@ if "sqlite" in settings.database_url_complete:
         settings.database_url_complete,
         connect_args={"check_same_thread": False},
         poolclass=StaticPool,
-        echo=settings.debug,
+        echo=False,  # Disable SQL query logging
     )
 else:
     # PostgreSQL configuration for production
@@ -24,7 +24,7 @@ else:
         settings.database_url_complete,
         pool_pre_ping=True,
         pool_recycle=300,
-        echo=settings.debug,
+        echo=False,  # Disable SQL query logging
     )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

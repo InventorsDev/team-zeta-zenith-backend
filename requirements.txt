@@ -26,9 +26,29 @@ requests==2.31.0
 # ML and data processing
 scikit-learn==1.3.2
 pandas==2.1.3
-numpy==1.26.4
+numpy<2
 transformers==4.36.0
 torch==2.8.0
+matplotlib
+seaborn
+statsmodels
+tokenizers
+datasets
+
+# Text Processing and NLP
+nltk
+spacy
+textblob
+vaderSentiment
+
+# Monitoring and Logging
+mlflow
+wandb
+prometheus-client
+
+# Additional utilities for ML
+tqdm
+joblib
 
 # External integrations
 slack-sdk==3.26.1

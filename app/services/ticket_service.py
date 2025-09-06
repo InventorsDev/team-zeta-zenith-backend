@@ -10,6 +10,7 @@ from app.schemas.ticket import (
     TicketCreate, TicketUpdate, TicketResponse, TicketSummary,
     TicketFilter, PaginatedTickets, TicketStats, TicketAIAnalysis
 )
+from app.services.ml_service import ml_service
 
 
 class TicketService:
@@ -20,8 +21,8 @@ class TicketService:
         self.ticket_repo = TicketRepository(db)
         self.user_repo = UserRepository(db)
 
-    def create_ticket(self, ticket_data: TicketCreate, current_user: User) -> TicketResponse:
-        """Create a new ticket with validation"""
+    def create_ticket(self, ticket_data: TicketCreate, current_user: User) -> Dict[str, Any]:
+        """Create a new ticket with validation and ML enhancement"""
         # Ensure user belongs to an organization
         if not current_user.organization_id:
             raise HTTPException(
@@ -35,10 +36,24 @@ class TicketService:
         # Set organization_id from current user
         ticket_dict["organization_id"] = current_user.organization_id
         
-        # Create ticket
-        ticket = self.ticket_repo.create_ticket(ticket_dict)
+        # Get ML analysis for this ticket (but don't store in DB)
+        ml_analysis = ml_service.enhance_ticket_data(ticket_dict)
         
-        return self._to_ticket_response(ticket)
+        # Separate ML fields from database fields
+        db_fields = {k: v for k, v in ticket_dict.items() if not k.startswith('ml_')}
+        ml_fields = {k: v for k, v in ml_analysis.items() if k.startswith('ml_')}
+        
+        # Create ticket with only database fields
+        ticket = self.ticket_repo.create_ticket(db_fields)
+        
+        # Convert to response and add ML fields
+        ticket_response = self._to_ticket_response(ticket)
+        
+        # Convert response to dict and add ML fields
+        response_dict = ticket_response.dict()
+        response_dict.update(ml_fields)
+        
+        return response_dict
 
     def get_ticket(self, ticket_id: int, organization_id: int) -> TicketResponse:
         """Get a single ticket by ID with organization check"""
@@ -231,6 +246,88 @@ class TicketService:
         ticket = self.ticket_repo.update_ai_analysis(ticket, analysis_dict)
         
         return self._to_ticket_response(ticket)
+    
+    def analyze_ticket_with_ml(self, ticket_id: int, organization_id: int) -> Dict[str, Any]:
+        """Perform ML analysis on a specific ticket"""
+        ticket = self.ticket_repo.get(ticket_id)
+        if not ticket:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Ticket not found"
+            )
+        
+        if ticket.organization_id != organization_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied to this ticket"
+            )
+        
+        # Get ticket content for analysis
+        text = getattr(ticket, 'content', getattr(ticket, 'description', ''))
+        if not text:
+            return {"error": "No content available for analysis"}
+        
+        # Perform ML analysis
+        classification = ml_service.classify_ticket(text)
+        sentiment = ml_service.analyze_sentiment(text)
+        similar_tickets = ml_service.find_similar_tickets(text, top_k=5)
+        duplicates = ml_service.detect_duplicates(text, threshold=0.8)
+        
+        return {
+            "ticket_id": ticket_id,
+            "classification": classification,
+            "sentiment": sentiment,
+            "similar_tickets": similar_tickets,
+            "potential_duplicates": duplicates,
+            "analysis_timestamp": datetime.utcnow().isoformat()
+        }
+    
+    def get_ml_analytics(self, organization_id: int) -> Dict[str, Any]:
+        """Get ML-powered analytics for organization tickets"""
+        # Get all tickets for the organization
+        all_tickets = self.ticket_repo.get_by_organization(organization_id, skip=0, limit=10000)
+        
+        # Convert to format expected by ML service
+        ticket_data = []
+        for ticket in all_tickets:
+            content = getattr(ticket, 'content', getattr(ticket, 'description', ''))
+            if content:
+                ticket_data.append({
+                    'content': content,
+                    'created_at': ticket.created_at.isoformat() if ticket.created_at else None,
+                    'status': ticket.status.value if ticket.status else None,
+                    'priority': ticket.priority.value if ticket.priority else None
+                })
+        
+        # Get ML analytics
+        ml_analytics = ml_service.get_ticket_analytics(ticket_data)
+        
+        # Add trend analysis
+        trends = ml_service.analyze_ticket_trends(ticket_data, days=30)
+        ml_analytics['trends'] = trends
+        
+        return ml_analytics
+    
+    def find_similar_tickets(self, ticket_id: int, organization_id: int, threshold: float = 0.7) -> List[Dict[str, Any]]:
+        """Find tickets similar to the given ticket"""
+        ticket = self.ticket_repo.get(ticket_id)
+        if not ticket:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Ticket not found"
+            )
+        
+        if ticket.organization_id != organization_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied to this ticket"
+            )
+        
+        text = getattr(ticket, 'content', getattr(ticket, 'description', ''))
+        if not text:
+            return []
+        
+        return ml_service.find_similar_tickets(text, threshold=threshold, top_k=10)
 
     def get_ticket_stats(self, organization_id: int) -> TicketStats:
         """Get ticket statistics for organization"""

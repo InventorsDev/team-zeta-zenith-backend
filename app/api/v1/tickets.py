@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Dict, Any, List
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from app.database.connection import get_db
@@ -20,13 +20,13 @@ def get_ticket_service(db: Session = Depends(get_db)) -> TicketService:
     return TicketService(db)
 
 
-@router.post("/", response_model=TicketResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/", status_code=status.HTTP_201_CREATED)
 async def create_ticket(
     ticket_data: TicketCreate,
     current_user: User = Depends(get_current_user),
     ticket_service: TicketService = Depends(get_ticket_service)
-):
-    """Create a new ticket"""
+) -> Dict[str, Any]:
+    """Create a new ticket with ML enhancement"""
     return ticket_service.create_ticket(ticket_data, current_user)
 
 
@@ -254,3 +254,28 @@ async def get_tickets_needing_review(
         page=page,
         size=size
     )
+
+
+# ML-powered business endpoints
+@router.get("/{ticket_id}/analysis")
+async def get_ticket_analysis(
+    ticket_id: int,
+    current_user: User = Depends(get_current_user),
+    ticket_service: TicketService = Depends(get_ticket_service)
+) -> Dict[str, Any]:
+    """Get ML analysis for a specific ticket"""
+    return ticket_service.analyze_ticket_with_ml(ticket_id, current_user.organization_id)
+
+
+@router.get("/{ticket_id}/similar")
+async def get_similar_tickets(
+    ticket_id: int,
+    threshold: float = Query(0.7, ge=0.0, le=1.0, description="Similarity threshold"),
+    current_user: User = Depends(get_current_user),
+    ticket_service: TicketService = Depends(get_ticket_service)
+) -> List[Dict[str, Any]]:
+    """Find tickets similar to this one"""
+    return ticket_service.find_similar_tickets(ticket_id, current_user.organization_id, threshold)
+
+
+# Moved to /api/v1/analytics/overview for better organization

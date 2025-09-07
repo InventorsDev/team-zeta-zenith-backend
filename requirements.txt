@@ -34,6 +34,7 @@ seaborn
 statsmodels
 tokenizers
 datasets
+sentence-transformers==5.1.0
 
 # Text Processing and NLP
 nltk

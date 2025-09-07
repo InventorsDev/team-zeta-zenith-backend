@@ -1,5 +1,5 @@
 from typing import Optional, Dict, Any, List
-from pydantic import BaseModel, validator, Field
+from pydantic import BaseModel, EmailStr, validator, Field
 from datetime import datetime
 
 
@@ -190,7 +190,7 @@ class OrganizationSettings(BaseModel):
 
 class OrganizationInvite(BaseModel):
     """Schema for inviting users to organization"""
-    email: str = Field(..., description="Email address to invite")
+    email: EmailStr = Field(..., description="Email address to invite")
     role: str = Field("user", description="Role to assign")
     
     @validator('email')

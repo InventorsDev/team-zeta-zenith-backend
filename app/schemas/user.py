@@ -1,12 +1,12 @@
 from typing import Optional
-from pydantic import BaseModel, validator
+from pydantic import BaseModel, EmailStr, validator
 from datetime import datetime
 from app.models.user import UserRole
 
 
 class UserBase(BaseModel):
     """Base user schema"""
-    email: str
+    email: EmailStr
     full_name: str
     is_active: Optional[bool] = True
     role: Optional[UserRole] = UserRole.USER
@@ -32,7 +32,7 @@ class UserCreate(UserBase):
 
 class UserLogin(BaseModel):
     """Schema for user login"""
-    email: str
+    email: EmailStr
     password: str
 
 

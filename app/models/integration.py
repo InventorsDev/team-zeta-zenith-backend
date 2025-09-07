@@ -52,6 +52,7 @@ class Integration(Base):
     # Connection details
     webhook_url = Column(String(512), nullable=True)
     webhook_secret = Column(String(255), nullable=True)
+    webhook_token = Column(String(255), nullable=True, unique=True)  # Unique token for webhook URLs
     api_endpoint = Column(String(512), nullable=True)
 
     # Sync information

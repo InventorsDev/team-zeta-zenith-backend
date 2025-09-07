@@ -102,6 +102,7 @@ class IntegrationResponse(IntegrationBase):
     status: IntegrationStatus
     organization_id: int
     webhook_url: Optional[str] = None
+    webhook_token: Optional[str] = None
     api_endpoint: Optional[str] = None
     
     # Timestamps

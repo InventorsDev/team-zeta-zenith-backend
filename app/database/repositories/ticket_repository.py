@@ -238,3 +238,36 @@ class TicketRepository(BaseRepository[Ticket]):
             update_data["tags"] = analysis["tags"]
         
         return self.update(ticket, update_data)
+    
+    def get_by_external_id(self, external_id: str) -> Optional[Ticket]:
+        """Get ticket by external ID (from integration)"""
+        return (
+            self.db.query(Ticket)
+            .filter(Ticket.external_id == external_id)
+            .first()
+        )
+    
+    def get_latest_by_channel(self, channel: str) -> Optional[Ticket]:
+        """Get the most recently updated ticket from a specific channel"""
+        return (
+            self.db.query(Ticket)
+            .filter(Ticket.channel == channel)
+            .order_by(desc(Ticket.updated_at))
+            .first()
+        )
+    
+    def count_by_channel(self, channel: str) -> int:
+        """Count tickets from a specific channel"""
+        return (
+            self.db.query(Ticket)
+            .filter(Ticket.channel == channel)
+            .count()
+        )
+    
+    def update_ticket(self, ticket_id: int, update_data: Dict[str, Any]) -> Optional[Ticket]:
+        """Update ticket by ID with arbitrary data"""
+        ticket = self.get_by_id(ticket_id)
+        if ticket:
+            update_data["last_activity_at"] = datetime.utcnow()
+            return self.update(ticket, update_data)
+        return None

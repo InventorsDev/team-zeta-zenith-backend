@@ -12,6 +12,9 @@ class Settings(BaseSettings):
     app_version: str = "1.0.0"
     debug: bool = False
     environment: str = "development"
+    local_api_url: Optional[str] = None
+    prod_api_url: Optional[str] = None
+    api_base_url: Optional[str] = None
 
     # API
     api_v1_prefix: str = "/api/v1"
@@ -45,6 +48,7 @@ class Settings(BaseSettings):
     zendesk_subdomain: Optional[str] = None
     zendesk_email: Optional[str] = None
     zendesk_token: Optional[str] = None
+    zendesk_signing_secret: Optional[str] = None
 
     # CORS
     backend_cors_origins: List[str] = ["http://localhost:3000", "http://localhost:8000"]

@@ -45,6 +45,10 @@ class IntegrationRepository(BaseRepository[Integration]):
     def get_by_webhook_url(self, webhook_url: str) -> Optional[Integration]:
         """Get integration by webhook URL (for webhook handling)"""
         return self.db.query(Integration).filter(Integration.webhook_url == webhook_url).first()
+    
+    def get_by_webhook_token(self, webhook_token: str) -> Optional[Integration]:
+        """Get integration by webhook token (for secure webhook handling)"""
+        return self.db.query(Integration).filter(Integration.webhook_token == webhook_token).first()
 
     def create_integration(self, integration_data: Dict[str, Any]) -> Integration:
         """Create integration with encrypted config"""

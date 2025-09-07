@@ -3,6 +3,7 @@ from typing import Optional, Union
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from fastapi import HTTPException, status
+from pydantic import EmailStr
 from .config import get_settings
 
 settings = get_settings()
@@ -46,7 +47,7 @@ def decode_access_token(token: str) -> Optional[dict]:
         return None
 
 
-def create_token_response(user_id: int, email: str) -> dict:
+def create_token_response(user_id: int, email: EmailStr) -> dict:
     """Create token response with user info"""
     access_token_expires = timedelta(minutes=settings.access_token_expire_minutes)
     access_token = create_access_token(

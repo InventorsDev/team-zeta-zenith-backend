@@ -271,3 +271,12 @@ class TicketRepository(BaseRepository[Ticket]):
             update_data["last_activity_at"] = datetime.utcnow()
             return self.update(ticket, update_data)
         return None
+    
+    def get_all_tickets(self, skip: int = 0, limit: int = 100) -> List[Ticket]:
+        """Get all tickets with pagination"""
+        return (
+            self.db.query(Ticket)
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )

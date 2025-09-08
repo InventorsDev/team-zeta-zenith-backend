@@ -90,15 +90,15 @@ class MLService:
         
         try:
             clean_text = text_processor.clean_text(text) if text_processor else text
-            sentiment, score, confidence = sentiment_analyzer.analyze_sentiment(clean_text)
+            sentiment_result = sentiment_analyzer.analyze_sentiment(clean_text)
             
             processing_time = time.time() - start_time
             
             return {
-                "sentiment": sentiment,
-                "sentiment_score": score,
-                "confidence": confidence,
-                "confidence_label": self._get_confidence_label(confidence),
+                "sentiment": sentiment_result.get("sentiment", "neutral"),
+                "sentiment_score": sentiment_result.get("sentiment_score", 0.0),
+                "confidence": sentiment_result.get("confidence", 0.0),
+                "confidence_label": self._get_confidence_label(sentiment_result.get("confidence", 0.0)),
                 "processing_time": processing_time
             }
         
@@ -116,8 +116,15 @@ class MLService:
             return []
         
         try:
-            similar_tickets = similarity_detector.find_similar(text, threshold=threshold, top_k=top_k)
-            return similar_tickets
+            # Check if similarity detector is properly initialized with embeddings
+            if similarity_detector.embeddings is None or len(similarity_detector.ticket_texts) == 0:
+                logger.warning("Similarity detector not initialized with ticket data - cannot find similar tickets")
+                return []
+            
+            # Note: find_similar expects ticket_index, not text
+            # This method needs to be redesigned to work with new text input
+            logger.warning("find_similar_tickets not implemented for new text - requires existing ticket index")
+            return []
         except Exception as e:
             logger.error(f"Similarity detection failed: {e}")
             return []
@@ -132,7 +139,14 @@ class MLService:
             return []
         
         try:
-            duplicates = similarity_detector.detect_duplicates(text, threshold=threshold)
+            # Check if similarity detector is properly initialized with embeddings
+            if similarity_detector.embeddings is None or len(similarity_detector.ticket_texts) == 0:
+                logger.warning("Similarity detector not initialized with ticket data - cannot detect duplicates")
+                return []
+            
+            # Note: SimilarityDetector.detect_duplicates() doesn't accept text or threshold parameters
+            # It operates on the internal dataset and uses internal threshold
+            duplicates = similarity_detector.detect_duplicates()
             return duplicates
         except Exception as e:
             logger.error(f"Duplicate detection failed: {e}")
@@ -280,6 +294,110 @@ class MLService:
                 logger.warning(f"Model monitor health check failed: {e}")
         
         return status
+    
+    def train_similarity_detector(self, organization_id: Optional[int] = None) -> Dict[str, Any]:
+        """
+        Train the similarity detector with existing tickets
+        Args:
+            organization_id: Optional organization ID to limit training to specific org
+        Returns:
+            Training results and statistics
+        """
+        if not similarity_detector:
+            return {
+                "success": False,
+                "error": "Similarity detector not available",
+                "tickets_processed": 0
+            }
+        
+        try:
+            from app.database.repositories.ticket_repository import TicketRepository
+            from app.database.connection import get_db
+            
+            # Get database session
+            db = next(get_db())
+            ticket_repo = TicketRepository(db)
+            
+            # Get tickets for training
+            if organization_id:
+                tickets = ticket_repo.get_by_organization(organization_id, skip=0, limit=10000)
+            else:
+                # Get all tickets across all organizations for global similarity
+                tickets = ticket_repo.get_all_tickets(skip=0, limit=10000)
+            
+            if len(tickets) < 2:
+                return {
+                    "success": False,
+                    "error": f"Need at least 2 tickets for training, found {len(tickets)}",
+                    "tickets_processed": len(tickets)
+                }
+            
+            # Extract ticket texts
+            ticket_texts = []
+            ticket_ids = []
+            
+            for ticket in tickets:
+                # Combine title and description for better similarity detection
+                text_parts = []
+                if ticket.title:
+                    text_parts.append(ticket.title)
+                if ticket.description:
+                    text_parts.append(ticket.description)
+                
+                if text_parts:
+                    combined_text = " | ".join(text_parts)
+                    ticket_texts.append(combined_text)
+                    ticket_ids.append(ticket.id)
+            
+            if len(ticket_texts) < 2:
+                return {
+                    "success": False,
+                    "error": f"Need at least 2 valid ticket texts for training, found {len(ticket_texts)}",
+                    "tickets_processed": len(tickets)
+                }
+            
+            logger.info(f"Training similarity detector with {len(ticket_texts)} tickets...")
+            start_time = time.time()
+            
+            # Adjust cluster count based on number of tickets
+            # Rule: Use min(ticket_count // 2, 5) clusters, but at least 2 and at most ticket_count
+            optimal_clusters = max(2, min(len(ticket_texts), min(len(ticket_texts) // 2, 5)))
+            original_cluster_count = similarity_detector.cluster_count
+            similarity_detector.cluster_count = optimal_clusters
+            
+            logger.info(f"Using {optimal_clusters} clusters (adjusted from {original_cluster_count})")
+            
+            # Train the similarity detector
+            similarity_detector.fit(ticket_texts)
+            
+            training_time = time.time() - start_time
+            
+            # Test duplicate detection after training
+            duplicates_found = similarity_detector.detect_duplicates()
+            
+            logger.info(f"Similarity detector training completed in {training_time:.2f}s")
+            logger.info(f"Found {len(duplicates_found)} potential duplicates")
+            
+            return {
+                "success": True,
+                "tickets_processed": len(ticket_texts),
+                "training_time_seconds": round(training_time, 2),
+                "duplicates_found": len(duplicates_found),
+                "organization_id": organization_id,
+                "clusters_used": optimal_clusters,
+                "model_name": getattr(getattr(similarity_detector, 'model', None), '_model_name', 'all-MiniLM-L6-v2') if hasattr(similarity_detector, 'model') else 'unknown'
+            }
+            
+        except Exception as e:
+            logger.error(f"Similarity detector training failed: {e}")
+            return {
+                "success": False,
+                "error": str(e),
+                "tickets_processed": 0
+            }
+        finally:
+            if 'db' in locals():
+                db.close()
     
     def _get_confidence_label(self, confidence: float) -> str:
         """Convert confidence score to label"""

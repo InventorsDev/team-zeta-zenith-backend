@@ -2,6 +2,8 @@ from typing import List, Optional, Dict, Any
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 from datetime import datetime
+import secrets
+import string
 from app.models.integration import Integration, IntegrationStatus, IntegrationType
 from app.models.user import User
 from app.database.repositories.integration_repository import IntegrationRepository
@@ -10,6 +12,9 @@ from app.schemas.integration import (
     IntegrationCreate, IntegrationUpdate, IntegrationResponse, IntegrationSummary,
     IntegrationFilter, PaginatedIntegrations, IntegrationStats, IntegrationConfigMask
 )
+from app.core.config import get_settings
+
+settings = get_settings()
 
 
 class IntegrationService:
@@ -19,6 +24,26 @@ class IntegrationService:
         self.db = db
         self.integration_repo = IntegrationRepository(db)
         self.user_repo = UserRepository(db)
+    
+    def _generate_webhook_token(self) -> str:
+        """Generate a unique, secure webhook token"""
+        # Generate a secure random token: wh_ prefix + 32 random characters
+        alphabet = string.ascii_lowercase + string.digits
+        token_suffix = ''.join(secrets.choice(alphabet) for _ in range(32))
+        return f"wh_{token_suffix}"
+    
+    def _generate_webhook_url(self, webhook_token: str) -> str:
+        """Generate the full webhook URL for the integration"""
+        # Use the appropriate base URL based on environment
+        if hasattr(settings, 'webhook_base_url') and settings.webhook_base_url:
+            base_url = settings.webhook_base_url.rstrip('/')
+        elif hasattr(settings, 'api_base_url') and settings.api_base_url:
+            base_url = settings.api_base_url.rstrip('/')
+        else:
+            # Fallback to localhost for development
+            base_url = "http://localhost:8080"
+        
+        return f"{base_url}/api/v1/webhooks/{webhook_token}"
 
     def create_integration(self, integration_data: IntegrationCreate, current_user: User) -> IntegrationResponse:
         """Create a new integration with validation"""
@@ -42,6 +67,14 @@ class IntegrationService:
         
         # Set organization_id from current user
         integration_dict["organization_id"] = current_user.organization_id
+        
+        # Generate unique webhook token and URL
+        webhook_token = self._generate_webhook_token()
+        webhook_url = self._generate_webhook_url(webhook_token)
+        
+        # Add webhook token and URL to integration data
+        integration_dict["webhook_token"] = webhook_token
+        integration_dict["webhook_url"] = webhook_url
         
         # Create integration
         integration = self.integration_repo.create_integration(integration_dict)
@@ -355,6 +388,7 @@ class IntegrationService:
             organization_id=integration.organization_id,
             settings=integration.settings or {},
             webhook_url=integration.webhook_url,
+            webhook_token=integration.webhook_token,
             api_endpoint=integration.api_endpoint,
             sync_frequency=integration.sync_frequency,
             sync_tickets=integration.sync_tickets,
@@ -392,3 +426,20 @@ class IntegrationService:
             receive_webhooks=integration.receive_webhooks,
             last_error=integration.last_error
         )
+    
+    def get_integration_by_webhook_token(self, webhook_token: str) -> Optional[Integration]:
+        """Get integration by webhook token"""
+        return self.integration_repo.get_by_webhook_token(webhook_token)
+    
+    def increment_webhook_count(self, integration_id: int) -> bool:
+        """Increment webhook received count for an integration"""
+        try:
+            integration = self.integration_repo.get(integration_id)
+            if integration:
+                self.integration_repo.update(integration, {
+                    "total_webhooks_received": integration.total_webhooks_received + 1
+                })
+                return True
+            return False
+        except Exception:
+            return False

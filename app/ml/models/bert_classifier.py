@@ -46,7 +46,7 @@ class TicketDataset(Dataset):
             'labels': torch.tensor(self.label2id[label], dtype=torch.long)
         }
 
-class BERTClassifier:
+class BertClassifier:
     """
     BERT-based classifier for support ticket categorization
     Supports fine-tuning and model versioning
@@ -345,4 +345,4 @@ class BERTClassifier:
             raise
 
 # Global BERT classifier instance
-bert_classifier = BERTClassifier() 
+bert_classifier = BertClassifier() 

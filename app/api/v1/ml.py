@@ -18,7 +18,7 @@ from app.ml import (
 logger = logging.getLogger(__name__)
 
 # Create router
-router = APIRouter()
+router = APIRouter(prefix="/ml", tags=["ml"])
 
 # Pydantic models for request/response
 class TicketRequest(BaseModel):
@@ -270,9 +270,16 @@ async def batch_process(request: BatchRequest):
 async def get_categories():
     """Get available ticket categories"""
     try:
+        if improved_classifier and hasattr(improved_classifier, 'trained') and improved_classifier.trained:
+            categories_list = list(improved_classifier.category_patterns.keys())
+        elif rule_based_classifier and hasattr(rule_based_classifier, 'category_patterns'):
+            categories_list = list(rule_based_classifier.category_patterns.keys())
+        else:
+            categories_list = ["general", "technical", "billing", "bug", "feature", "account"]
+        
         categories = {
-            "categories": list(improved_classifier.category_patterns.keys()) if improved_classifier.trained else rule_based_classifier.categories,
-            "total": len(improved_classifier.category_patterns) if improved_classifier.trained else len(rule_based_classifier.categories)
+            "categories": categories_list,
+            "total": len(categories_list)
         }
         return categories
     except Exception as e:
@@ -286,20 +293,111 @@ async def get_models_info():
     try:
         info = {
             "improved_classifier": {
-                "trained": improved_classifier.trained,
-                "accuracy": "93.3%" if improved_classifier.trained else "N/A",
-                "categories": len(improved_classifier.category_patterns) if improved_classifier.trained else 0
+                "trained": getattr(improved_classifier, 'trained', False) if improved_classifier else False,
+                "accuracy": "93.3%" if improved_classifier and getattr(improved_classifier, 'trained', False) else "N/A",
+                "categories": len(getattr(improved_classifier, 'category_patterns', {})) if improved_classifier and getattr(improved_classifier, 'trained', False) else 0
             },
             "bert_classifier": {
-                "loaded": hasattr(bert_classifier, 'model') and bert_classifier.model is not None,
-                "status": "ready" if hasattr(bert_classifier, 'model') and bert_classifier.model is not None else "not_loaded"
+                "loaded": hasattr(bert_classifier, 'model') and bert_classifier.model is not None if bert_classifier else False,
+                "status": "ready" if bert_classifier and hasattr(bert_classifier, 'model') and bert_classifier.model is not None else "not_loaded"
             },
             "rule_based": {
-                "status": "ready",
-                "categories": len(rule_based_classifier.categories)
+                "status": "ready" if rule_based_classifier else "not_available",
+                "categories": len(getattr(rule_based_classifier, 'category_patterns', {})) if rule_based_classifier else 0
             }
         }
         return info
     except Exception as e:
         logger.error(f"Model info error: {e}")
         raise HTTPException(status_code=500, detail="Failed to retrieve model information")
+
+# Training endpoints
+class TrainingRequest(BaseModel):
+    organization_id: Optional[int] = Field(None, description="Optional organization ID to limit training scope")
+    
+class TrainingResponse(BaseModel):
+    success: bool
+    tickets_processed: int
+    training_time_seconds: Optional[float] = None
+    duplicates_found: Optional[int] = None
+    organization_id: Optional[int] = None
+    model_name: Optional[str] = None
+    error: Optional[str] = None
+
+@router.post("/train/similarity", response_model=TrainingResponse)
+async def train_similarity_detector(request: TrainingRequest = TrainingRequest()):
+    """
+    Train the similarity detector with existing tickets
+    This enables duplicate detection functionality
+    """
+    try:
+        from app.services.ml_service import ml_service
+        
+        logger.info(f"Starting similarity detector training for org: {request.organization_id}")
+        
+        result = ml_service.train_similarity_detector(request.organization_id)
+        
+        return TrainingResponse(**result)
+        
+    except Exception as e:
+        logger.error(f"Training endpoint error: {e}")
+        raise HTTPException(status_code=500, detail=f"Training failed: {str(e)}")
+
+@router.post("/train/similarity/background")
+async def train_similarity_background(background_tasks: BackgroundTasks, request: TrainingRequest = TrainingRequest()):
+    """
+    Train the similarity detector in the background
+    Returns immediately while training continues
+    """
+    try:
+        from app.services.ml_service import ml_service
+        
+        def background_training():
+            logger.info(f"Starting background similarity detector training for org: {request.organization_id}")
+            result = ml_service.train_similarity_detector(request.organization_id)
+            if result["success"]:
+                logger.info(f"Background training completed: {result['tickets_processed']} tickets processed")
+            else:
+                logger.error(f"Background training failed: {result['error']}")
+        
+        background_tasks.add_task(background_training)
+        
+        return {
+            "message": "Similarity detector training started in background",
+            "organization_id": request.organization_id,
+            "status": "started"
+        }
+        
+    except Exception as e:
+        logger.error(f"Background training endpoint error: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to start background training: {str(e)}")
+
+@router.get("/training/status")
+async def get_training_status():
+    """
+    Get current training status and similarity detector information
+    """
+    try:
+        from app.services.ml_service import ml_service
+        from app.ml import similarity_detector
+        
+        status = {
+            "similarity_detector_available": similarity_detector is not None,
+            "is_trained": False,
+            "tickets_loaded": 0,
+            "clusters": 0
+        }
+        
+        if similarity_detector:
+            status.update({
+                "is_trained": similarity_detector.embeddings is not None,
+                "tickets_loaded": len(similarity_detector.ticket_texts) if similarity_detector.ticket_texts else 0,
+                "clusters": similarity_detector.cluster_count if hasattr(similarity_detector, 'cluster_count') else 0,
+                "duplicate_threshold": similarity_detector.duplicate_threshold if hasattr(similarity_detector, 'duplicate_threshold') else 0.9
+            })
+        
+        return status
+        
+    except Exception as e:
+        logger.error(f"Training status error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to retrieve training status")

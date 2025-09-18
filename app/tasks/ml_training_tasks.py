@@ -72,7 +72,7 @@ def train_all_organizations_task(self) -> Dict[str, Any]:
     """
     try:
         from app.database.repositories.organization_repository import OrganizationRepository
-        from app.database.database import get_db
+        from app.database.connection import get_db
         from app.services.ml_service import ml_service
         
         logger.info("Starting similarity detector training for all organizations")

@@ -3,7 +3,7 @@ from fastapi import APIRouter
 api_router = APIRouter()
 
 # Import and include route modules when they are created
-from . import auth, tickets, integrations, organizations, analytics, ml
+from . import auth, tickets, integrations, organizations, analytics, ml, email_integration
 # from . import alerts, webhooks, sync
 
 api_router.include_router(auth.router)
@@ -12,6 +12,7 @@ api_router.include_router(integrations.router)
 api_router.include_router(organizations.router)
 api_router.include_router(analytics.router)
 api_router.include_router(ml.router)
+api_router.include_router(email_integration.router)
 # api_router.include_router(organizations.router, prefix="/organizations", tags=["organizations"])
 # api_router.include_router(tickets.router, prefix="/tickets", tags=["tickets"])
 # api_router.include_router(integrations.router, prefix="/integrations", tags=["integrations"])

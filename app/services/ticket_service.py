@@ -2,7 +2,7 @@ from typing import List, Optional, Dict, Any, Tuple
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
-from app.models.ticket import Ticket, TicketStatus, TicketPriority
+from app.models.ticket import Ticket, TicketStatus, TicketPriority, TicketChannel
 from app.models.user import User
 from app.database.repositories.ticket_repository import TicketRepository
 from app.database.repositories.user_repository import UserRepository
@@ -392,6 +392,35 @@ class TicketService:
         
         ticket = self.ticket_repo.add_first_response(ticket)
         return self._to_ticket_response(ticket)
+
+    def create_ticket_from_email(self, ticket_data: Dict[str, Any], organization_id: int) -> Dict[str, Any]:
+        """Create a ticket from email without requiring a user object"""
+        # Ensure organization_id is set
+        ticket_data["organization_id"] = organization_id
+        
+        # Set default values for email-generated tickets
+        ticket_data.setdefault("channel", TicketChannel.EMAIL)
+        ticket_data.setdefault("status", TicketStatus.OPEN)
+        ticket_data.setdefault("priority", TicketPriority.MEDIUM)
+        
+        # Get ML analysis for this ticket
+        ml_analysis = ml_service.enhance_ticket_data(ticket_data)
+        
+        # Separate ML fields from database fields
+        db_fields = {k: v for k, v in ticket_data.items() if not k.startswith('ml_')}
+        ml_fields = {k: v for k, v in ml_analysis.items() if k.startswith('ml_')}
+        
+        # Create ticket with only database fields
+        ticket = self.ticket_repo.create_ticket(db_fields)
+        
+        # Convert to response and add ML fields
+        ticket_response = self._to_ticket_response(ticket)
+        
+        # Convert response to dict and add ML fields
+        response_dict = ticket_response.dict()
+        response_dict.update(ml_fields)
+        
+        return response_dict
 
     def _to_ticket_response(self, ticket: Ticket) -> TicketResponse:
         """Convert ticket model to response schema"""

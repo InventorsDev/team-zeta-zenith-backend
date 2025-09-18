@@ -34,6 +34,7 @@ class Organization(Base):
     users = relationship("User", back_populates="organization")
     tickets = relationship("Ticket", back_populates="organization")
     integrations = relationship("Integration", back_populates="organization")
+    email_integrations = relationship("EmailIntegration", back_populates="organization")
 
     def __repr__(self):
         return f"<Organization(name='{self.name}', slug='{self.slug}')>"

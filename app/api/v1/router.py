@@ -1,0 +1,29 @@
+from fastapi import APIRouter
+
+api_router = APIRouter()
+
+# Import and include route modules when they are created
+from . import auth, tickets, integrations, organizations, analytics, ml, email_integration, tasks
+# from . import alerts, webhooks, sync
+
+api_router.include_router(auth.router)
+api_router.include_router(tickets.router)
+api_router.include_router(integrations.router)
+api_router.include_router(organizations.router)
+api_router.include_router(analytics.router)
+api_router.include_router(ml.router)
+api_router.include_router(email_integration.router)
+api_router.include_router(tasks.router, prefix="/tasks", tags=["tasks"])
+# api_router.include_router(organizations.router, prefix="/organizations", tags=["organizations"])
+# api_router.include_router(tickets.router, prefix="/tickets", tags=["tickets"])
+# api_router.include_router(integrations.router, prefix="/integrations", tags=["integrations"])
+# api_router.include_router(analytics.router, prefix="/analytics", tags=["analytics"])
+# api_router.include_router(alerts.router, prefix="/alerts", tags=["alerts"])
+# api_router.include_router(webhooks.router, prefix="/webhooks", tags=["webhooks"])
+# api_router.include_router(sync.router, prefix="/sync", tags=["sync"])
+
+
+@api_router.get("/status")
+async def api_status():
+    """API status endpoint"""
+    return {"status": "API is running", "version": "v1"}

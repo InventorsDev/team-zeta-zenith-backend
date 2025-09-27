@@ -1,0 +1,27 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main   # Trigger only on main branch
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to server via SSH
+        uses: appleboy/ssh-action@v1.2.1
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          script: |
+            if [ ! -d "/home/${{ secrets.SERVER_USER }}/team-zeta-zenith-backend" ]; then
+              git clone https://github.com/${{ github.repository }}.git team-zeta-zenith-backend
+            fi
+            cd team-zeta-zenith-backend
+            git fetch --all
+            git reset --hard origin/main
+            docker-compose down -v
+            docker-compose up --build -d

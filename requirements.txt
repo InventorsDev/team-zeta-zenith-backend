@@ -23,31 +23,28 @@ celery==5.3.4
 httpx==0.25.2
 requests==2.31.0
 
-# ML and data processing
+# ML and data processing (CPU-only, lightweight)
 scikit-learn==1.3.2
 pandas==2.1.3
 numpy<2
 transformers>=4.41.0,<5.0.0
-torch==2.8.0
+torch==2.8.0+cpu -f https://download.pytorch.org/whl/torch_stable.html
+sentence-transformers==5.1.0
+tokenizers
+
+# Visualization (keep essential ones)
 matplotlib
 seaborn
-statsmodels
-tokenizers
-datasets
-sentence-transformers==5.1.0
 
-# Text Processing and NLP
+# Text Processing and NLP (keep essential ones)
 nltk
 spacy
-textblob
 vaderSentiment
 
-# Monitoring and Logging
-mlflow
-wandb
+# Monitoring (lightweight alternatives)
 prometheus-client
 
-# Additional utilities for ML
+# ML utilities
 tqdm
 joblib
 
@@ -57,7 +54,6 @@ zenpy==2.0.25
 
 # Email processing
 email-validator==2.1.0
-# python-email-validator
 
 # Utilities
 python-dateutil==2.8.2

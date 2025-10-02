@@ -21,7 +21,10 @@ RUN apt-get update && apt-get install -y \
 # Copy requirements first to leverage Docker cache
 COPY requirements.txt .
 
-# Install Python dependencies
+# Remove torch from requirements.txt first
+RUN pip install --no-cache-dir torch==2.8.0 --index-url https://download.pytorch.org/whl/cpu
+
+# Then install the rest
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy project files

@@ -79,3 +79,40 @@ class Integration(Base):
 
     def __repr__(self):
         return f"<Integration(name='{self.name}', type='{self.type}', status='{self.status}')>"
+
+
+class SlackIntegration(Base):
+    """Slack-specific integration model"""
+
+    __tablename__ = "slack_integrations"
+
+    # Organization relationship
+    organization_id = Column(Integer, ForeignKey("organizations.id"), nullable=False, index=True)
+    organization = relationship("Organization", backref="slack_integrations")
+
+    # Slack workspace details
+    workspace_name = Column(String(255), nullable=False)
+    workspace_id = Column(String(255), nullable=False, unique=True)
+    team_id = Column(String(255), nullable=True)
+
+    # OAuth tokens
+    access_token = Column(Text, nullable=False)  # Should be encrypted
+    bot_token = Column(Text, nullable=True)  # Should be encrypted
+    bot_user_id = Column(String(255), nullable=True)
+
+    # Configuration
+    channel_ids = Column(JSON, nullable=True, default=list)  # List of channel IDs to monitor
+    auto_create_tickets = Column(Boolean, default=True, nullable=False)
+    sync_frequency = Column(Integer, default=300, nullable=False)  # seconds
+
+    # Status
+    is_active = Column(Boolean, default=True, nullable=False)
+    last_sync_at = Column(DateTime, nullable=True)
+    last_error = Column(Text, nullable=True)
+
+    # Statistics
+    total_messages_processed = Column(Integer, default=0, nullable=False)
+    total_tickets_created = Column(Integer, default=0, nullable=False)
+
+    def __repr__(self):
+        return f"<SlackIntegration(org={self.organization_id}, workspace='{self.workspace_name}')>"

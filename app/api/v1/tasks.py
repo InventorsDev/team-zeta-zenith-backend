@@ -21,7 +21,7 @@ from app.tasks.cleanup_tasks import (
     health_check_tasks
 )
 from app.schemas.base import ResponseModel
-from app.api.middleware.auth import get_current_user
+from app.api.v1.auth import get_current_user
 from app.models.user import User
 
 router = APIRouter()

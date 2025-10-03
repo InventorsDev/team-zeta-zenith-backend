@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, DateTime, Text, Float, Boolean, JSON
 from sqlalchemy.sql import func
-from app.database.base import Base
+from .base import Base
 
 
 class TaskStatus(Base):
@@ -34,7 +34,7 @@ class TaskStatus(Base):
     organization_id = Column(Integer, nullable=True)
 
     # Additional metadata
-    metadata = Column(JSON, nullable=True)
+    task_metadata = Column(JSON, nullable=True)
 
     def __repr__(self):
         return f"<TaskStatus(id={self.id}, task_id='{self.task_id}', status='{self.status}')>"

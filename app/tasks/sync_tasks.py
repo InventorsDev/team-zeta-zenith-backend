@@ -10,7 +10,8 @@ from app.integrations.slack.sync import SlackSyncService
 from app.integrations.email.parser import EmailProcessor
 from app.models.organization import Organization
 from app.models.ticket import Ticket
-from app.models.integration import SlackIntegration, EmailIntegration
+from app.models.integration import SlackIntegration
+from app.models.email_integration import EmailIntegration
 from app.tasks.ml_tasks import classify_ticket_task
 
 logger = logging.getLogger(__name__)

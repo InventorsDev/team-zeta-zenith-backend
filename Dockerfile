@@ -23,7 +23,7 @@ COPY requirements.txt .
 
 RUN pip install --user --no-cache-dir \
     torch==2.8.0 --index-url https://download.pytorch.org/whl/cpu \
-    transformers>=4.41.0,<5.0.0 \
+    "transformers>=4.41.0,<5.0.0" \
     tokenizers==0.19.1 \
     spacy==3.7.4
 

@@ -1,5 +1,5 @@
 # Use Python 3.11 slim image as base
-FROM python:3.11-slim as builder
+FROM python:3.11-slim
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -21,31 +21,21 @@ RUN apt-get update && apt-get install -y \
 # Copy requirements first to leverage Docker cache
 COPY requirements.txt .
 
-RUN pip install --user --no-cache-dir \
-    torch==2.8.0 --index-url https://download.pytorch.org/whl/cpu \
-    transformers==4.41.2 \
-    tokenizers==0.19.1 \
-    spacy==3.7.4
+# Remove torch from requirements.txt first
+RUN pip install --no-cache-dir torch==2.8.0 --index-url https://download.pytorch.org/whl/cpu
 
 # Then install the rest
-RUN pip install --user --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Final stage
-FROM python:3.11-slim
-
-ENV PATH="/root/.local/bin:$PATH"
-WORKDIR /app
-
-COPY --from=builder /root/.local /root/.local
+# Copy project files
 COPY . .
 
 # Create directories for models and data
 RUN mkdir -p models data logs
 
 # Create non-root user for security
-RUN mkdir -p models data logs \
-    && groupadd -r appuser && useradd -r -g appuser appuser \
-    && chown -R appuser:appuser /app
+RUN groupadd -r appuser && useradd -r -g appuser appuser
+RUN chown -R appuser:appuser /app
 USER appuser
 
 # Expose port

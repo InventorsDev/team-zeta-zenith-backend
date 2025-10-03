@@ -3,7 +3,7 @@ name: CI/CD Pipeline
 on:
   push:
     branches:
-      - dev   # Trigger only on main branch
+      - dev   # Trigger only on dev branch
   workflow_dispatch: # Allow manual trigger
 
 jobs:
@@ -22,6 +22,6 @@ jobs:
             fi
             cd team-zeta-zenith-backend
             git fetch --all
-            git reset --hard origin/main
-            docker-compose pull
-            docker-compose up -d --build --remove-orphans
+            git reset --hard origin/dev
+            docker compose pull
+            docker compose up -d --build --remove-orphans

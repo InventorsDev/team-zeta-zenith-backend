@@ -15,6 +15,7 @@ from app.schemas.integration import (
 # Import Zendesk integration components
 from app.integrations.zendesk import ZendeskClient, ZendeskSyncService, ZendeskWebhookHandler
 from app.core.config import get_settings
+from app.integrations.slack import SlackClient
 
 settings = get_settings()
 

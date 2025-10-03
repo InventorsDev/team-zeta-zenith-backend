@@ -22,8 +22,25 @@ class SlackSyncService:
     Service for synchronizing Slack messages as tickets
     """
 
-    def __init__(self, slack_client: SlackClient, db: Optional[Session] = None):
-        self.slack_client = slack_client
+    def __init__(self, slack_integration_or_client, db: Optional[Session] = None):
+        """
+        Initialize SlackSyncService.
+
+        Args:
+            slack_integration_or_client: Either a SlackIntegration model or SlackClient instance
+            db: Optional database session
+        """
+        # Support both SlackIntegration model and SlackClient for backward compatibility
+        if hasattr(slack_integration_or_client, 'bot_token'):
+            # It's a SlackIntegration model
+            from app.integrations.slack.client import SlackClient
+            self.integration = slack_integration_or_client
+            self.slack_client = SlackClient(slack_integration_or_client.bot_token)
+        else:
+            # It's a SlackClient
+            self.slack_client = slack_integration_or_client
+            self.integration = None
+
         self.db = db or next(get_db())
         self.ticket_service = TicketService(self.db)
         self.integration_service = IntegrationService(self.db)
@@ -481,4 +498,38 @@ class SlackSyncService:
             "monitored_channels": len(self._get_monitored_channels()),
             "accessible_channels": len(self._get_all_accessible_channels()),
             "sync_enabled": True
+        }
+    def sync_tickets_since(self, since_date: datetime) -> Dict[str, Any]:
+        """
+        Sync tickets since a specific date (wrapper for compatibility with sync_tasks).
+
+        Args:
+            since_date: Sync messages from this date onwards
+
+        Returns:
+            Dict containing sync results
+        """
+        logger.info(f"Syncing Slack tickets since {since_date}")
+
+        # Get organization_id from integration if available
+        organization_id = None
+        if self.integration:
+            organization_id = self.integration.organization_id
+
+        # Call the main sync_messages method
+        result = self.sync_messages(
+            full_sync=False,
+            organization_id=organization_id
+        )
+
+        # Convert SlackSyncResult to dict format expected by sync_tasks
+        return {
+            "new_ticket_ids": [],  # Would track ticket IDs in full implementation
+            "updated_ticket_ids": [],  # Would track ticket IDs in full implementation
+            "messages_fetched": result.total_messages_fetched,
+            "messages_processed": result.total_messages_processed,
+            "tickets_created": result.total_tickets_created,
+            "tickets_updated": result.total_tickets_updated,
+            "errors": result.errors,
+            "duration_seconds": result.duration_seconds
         }

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from app.database.connection import get_db
@@ -15,14 +15,28 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
     """Dependency to get current authenticated user"""
     token = credentials.credentials
     payload = decode_access_token(token)
-    
+
     if payload is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid authentication credentials",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
+
+    auth_service = AuthService(db)
+    return auth_service.get_current_user(payload)
+
+
+def get_current_user_ws(token: str = Query(...), db: Session = Depends(get_db)) -> User:
+    """Dependency to get current authenticated user for WebSocket connections"""
+    payload = decode_access_token(token)
+
+    if payload is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authentication credentials",
+        )
+
     auth_service = AuthService(db)
     return auth_service.get_current_user(payload)
 

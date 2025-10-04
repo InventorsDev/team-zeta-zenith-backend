@@ -22,8 +22,8 @@ RUN apt-get update && apt-get install -y \
 COPY requirements.txt .
 
 RUN pip install --user --no-cache-dir \
-    torch==2.8.0 --index-url https://download.pytorch.org/whl/cpu \
-    transformers==4.57.0 \
+    # torch==2.8.0 --index-url https://download.pytorch.org/whl/cpu \
+    transformers[torch] \
     tokenizers==0.19.1 \
     spacy==3.7.4
 

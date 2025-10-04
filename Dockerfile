@@ -1,14 +1,12 @@
-# Use Python 3.11 slim image as base
+# Stage 1: Builder
 FROM python:3.11-slim as builder
 
-# Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PYTHONPATH=/app \
     PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1
 
-# Set work directory
 WORKDIR /app
 
 # Install system dependencies
@@ -18,47 +16,41 @@ RUN apt-get update && apt-get install -y \
     git \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements first to leverage Docker cache
+# Copy requirements first (better caching)
 COPY requirements.txt .
 
-# Install CPU-only PyTorch (from PyTorch index)
-RUN pip install --user --no-cache-dir \
-    torch==2.8.0 --index-url https://download.pytorch.org/whl/cpu
+# Install heavy pinned deps first (cached separately)
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install torch==2.8.0 --index-url https://download.pytorch.org/whl/cpu \
+    && pip install transformers==4.41.2 tokenizers==0.19.1 spacy==3.7.4
 
-# Install other packages from PyPI (default index)
-RUN pip install --user --no-cache-dir \
-    transformers==4.41.2 \
-    tokenizers==0.19.1 \
-    spacy==3.7.4
+# Install remaining dependencies
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install -r requirements.txt
 
 
-# Then install the rest
-RUN pip install --user --no-cache-dir -r requirements.txt
-
-# Final stage
+# Stage 2: Final runtime
 FROM python:3.11-slim
 
-ENV PATH="/root/.local/bin:$PATH"
 WORKDIR /app
 
-COPY --from=builder /root/.local /root/.local
+# Copy installed packages from builder
+COPY --from=builder /usr/local /usr/local
+
+# Copy app source
 COPY . .
 
-# Create directories for models and data
-RUN mkdir -p models data logs
-
-# Create non-root user for security
+# Create non-root user
 RUN mkdir -p models data logs \
     && groupadd -r appuser && useradd -r -g appuser appuser \
     && chown -R appuser:appuser /app
 USER appuser
 
-# Expose port
 EXPOSE 8000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 
-# Default command (can be overridden)
+# Default command
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

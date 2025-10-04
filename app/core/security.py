@@ -8,8 +8,13 @@ from .config import get_settings
 
 settings = get_settings()
 
-# Password hashing
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# Password hashing - truncate_error=False to handle 72-byte limit gracefully
+pwd_context = CryptContext(
+    schemes=["bcrypt"],
+    deprecated="auto",
+    bcrypt__default_rounds=12,
+    bcrypt__truncate_error=False  # Don't error on long passwords, truncate instead
+)
 
 # JWT settings
 ALGORITHM = "HS256"
@@ -30,12 +35,16 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify a plain password against its hash"""
-    return pwd_context.verify(plain_password, hashed_password)
+    # Truncate password to 72 bytes for bcrypt compatibility
+    password_bytes = plain_password.encode('utf-8')[:72]
+    return pwd_context.verify(password_bytes, hashed_password)
 
 
 def get_password_hash(password: str) -> str:
-    """Hash a password using bcrypt"""
-    return pwd_context.hash(password)
+    """Hash a password using bcrypt (truncates to 72 bytes)"""
+    # Bcrypt has a 72-byte password limit, truncate to avoid errors
+    password_bytes = password.encode('utf-8')[:72]
+    return pwd_context.hash(password_bytes)
 
 
 def decode_access_token(token: str) -> Optional[dict]:

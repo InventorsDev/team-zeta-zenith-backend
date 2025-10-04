@@ -36,5 +36,8 @@ jobs:
             cd team-zeta-zenith-backend
             git fetch --all
             git reset --hard origin/dev
+
+            echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u ${{ secrets.GHCR_USERNAME }} --password-stdin
+      
             docker compose pull
             docker compose up -d --build --remove-orphans

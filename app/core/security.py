@@ -8,12 +8,11 @@ from .config import get_settings
 
 settings = get_settings()
 
-# Password hashing - truncate_error=False to handle 72-byte limit gracefully
+# Password hashing
 pwd_context = CryptContext(
     schemes=["bcrypt"],
     deprecated="auto",
-    bcrypt__default_rounds=12,
-    bcrypt__truncate_error=False  # Don't error on long passwords, truncate instead
+    bcrypt__default_rounds=12
 )
 
 # JWT settings

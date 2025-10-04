@@ -355,22 +355,23 @@ class AnalyticsRepository(BaseRepository):
         """Get date truncation expression based on granularity"""
         if self.is_sqlite:
             # SQLite-compatible date truncation using strftime
+            # Always return datetime format (YYYY-MM-DD HH:MM:SS) for consistency
             if granularity == "hourly":
                 return func.strftime('%Y-%m-%d %H:00:00', Ticket.created_at)
             elif granularity == "daily":
-                return func.date(Ticket.created_at)
+                return func.strftime('%Y-%m-%d 00:00:00', Ticket.created_at)
             elif granularity == "weekly":
-                # Get start of week (Monday)
-                return func.date(Ticket.created_at, 'weekday 0', '-6 days')
+                # Get start of week (Monday) with time component
+                return func.strftime('%Y-%m-%d 00:00:00', Ticket.created_at, 'weekday 0', '-6 days')
             elif granularity == "monthly":
-                return func.strftime('%Y-%m-01', Ticket.created_at)
+                return func.strftime('%Y-%m-01 00:00:00', Ticket.created_at)
             elif granularity == "quarterly":
                 # SQLite doesn't have native quarter support, use monthly and group in application
-                return func.strftime('%Y-%m-01', Ticket.created_at)
+                return func.strftime('%Y-%m-01 00:00:00', Ticket.created_at)
             elif granularity == "yearly":
-                return func.strftime('%Y-01-01', Ticket.created_at)
+                return func.strftime('%Y-01-01 00:00:00', Ticket.created_at)
             else:
-                return func.date(Ticket.created_at)
+                return func.strftime('%Y-%m-%d 00:00:00', Ticket.created_at)
         else:
             # PostgreSQL date_trunc function
             if granularity == "hourly":

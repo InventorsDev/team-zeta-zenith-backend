@@ -62,10 +62,17 @@ class AnalyticsService:
     ) -> TimeSeriesResponse:
         """Get time-series analytics with caching"""
 
+        # Normalize metric type aliases
+        metric_aliases = {
+            "ticket_volume": "ticket_count",
+            "avg_sentiment": "sentiment_score"
+        }
+        normalized_metric_type = metric_aliases.get(metric_type, metric_type)
+
         cache_key = self._generate_cache_key(
             "time_series",
             org=organization_id,
-            metric=metric_type,
+            metric=normalized_metric_type,
             start=start_date.isoformat(),
             end=end_date.isoformat(),
             gran=granularity,
@@ -75,7 +82,7 @@ class AnalyticsService:
         def compute():
             data_points = self.repository.get_time_series(
                 organization_id=organization_id,
-                metric_type=metric_type,
+                metric_type=normalized_metric_type,
                 start_date=start_date,
                 end_date=end_date,
                 granularity=granularity,

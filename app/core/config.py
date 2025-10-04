@@ -50,8 +50,13 @@ class Settings(BaseSettings):
     zendesk_token: Optional[str] = None
     zendesk_signing_secret: Optional[str] = None
 
-    # CORS
-    backend_cors_origins: List[str] = ["http://localhost:3000", "http://localhost:8000"]
+    # CORS - Add production origins via environment variable
+    backend_cors_origins: List[str] = [
+        "http://localhost:3000",
+        "http://localhost:8000",
+        "http://localhost:5173",
+        "https://zetaai.samuelogboye.com"
+    ]
 
     # Logging
     log_level: str = "INFO"
@@ -74,8 +79,14 @@ class Settings(BaseSettings):
     @validator("backend_cors_origins", pre=True)
     def assemble_cors_origins(cls, v):
         if isinstance(v, str):
-            return [i.strip() for i in v.split(",")]
-        return v
+            # Handle comma-separated string
+            if v.strip():
+                return [i.strip() for i in v.split(",")]
+            return []
+        elif isinstance(v, list):
+            # Handle list (already parsed)
+            return v
+        return []
 
     @property
     def database_url_complete(self) -> str:

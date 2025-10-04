@@ -48,6 +48,13 @@ class UserResponse(UserBase):
     created_at: datetime
     updated_at: datetime
 
+    @validator('role', pre=True)
+    def normalize_role(cls, v):
+        """Normalize role to lowercase (handle legacy uppercase values)"""
+        if isinstance(v, str):
+            return v.lower()
+        return v
+
     class Config:
         from_attributes = True
 

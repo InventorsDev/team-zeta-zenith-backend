@@ -69,8 +69,7 @@ services:
 
   # Celery worker for general tasks
   celery_worker:
-    build: .
-    container_name: zenith_celery_worker
+    image: ghcr.io/samuelogboye/backend:dev
     environment:
       - ENVIRONMENT=development
       - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-zenith}
@@ -92,8 +91,7 @@ services:
 
   # Celery worker for ML tasks (higher resources)
   celery_ml_worker:
-    build: .
-    container_name: zenith_celery_ml_worker
+    image: ghcr.io/samuelogboye/backend:dev
     environment:
       - ENVIRONMENT=development
       - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-zenith}
@@ -121,8 +119,7 @@ services:
 
   # Celery Beat scheduler
   celery_beat:
-    build: .
-    container_name: zenith_celery_beat
+    image: ghcr.io/samuelogboye/backend:dev
     environment:
       - ENVIRONMENT=development
       - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-zenith}
@@ -145,8 +142,7 @@ services:
 
   # Flower for Celery monitoring
   flower:
-    build: .
-    container_name: zenith_flower
+    image: ghcr.io/samuelogboye/backend:dev
     ports:
       - "5555:5555"
     environment:

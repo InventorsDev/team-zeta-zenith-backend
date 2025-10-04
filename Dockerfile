@@ -22,18 +22,18 @@ RUN apt-get update && apt-get install -y \
 COPY requirements.txt .
 
 # Install CPU-only PyTorch (from PyTorch index)
-RUN pip install --user --no-cache-dir \
+RUN pip install --no-cache-dir \
     torch==2.8.0 --index-url https://download.pytorch.org/whl/cpu
 
 # Install other packages from PyPI (default index)
-RUN pip install --user --no-cache-dir \
+RUN pip install --no-cache-dir \
     transformers==4.41.2 \
     tokenizers==0.19.1 \
     spacy==3.7.4
 
 
 # Then install the rest
-RUN pip install --user --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Final stage
 FROM python:3.11-slim

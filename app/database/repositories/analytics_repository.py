@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 from app.models.ticket import Ticket, TicketStatus, TicketPriority, TicketChannel
 from app.models.analytics import AnalyticsMetric, AnalyticsSnapshot, TimeGranularity, MetricType
 from app.schemas.analytics import TimeSeriesDataPoint
+from app.core.config import get_settings
 from .base_repository import BaseRepository
 
 
@@ -13,6 +14,8 @@ class AnalyticsRepository(BaseRepository):
 
     def __init__(self, db: Session):
         self.db = db
+        self.settings = get_settings()
+        self.is_sqlite = "sqlite" in self.settings.database_url_complete
 
     # Time-series queries
     def get_time_series(
@@ -65,7 +68,7 @@ class AnalyticsRepository(BaseRepository):
                 .with_entities(
                     date_trunc.label('timestamp'),
                     func.avg(
-                        extract('epoch', Ticket.first_response_at - Ticket.created_at) / 3600
+                        self._get_time_diff_hours(Ticket.first_response_at, Ticket.created_at)
                     ).label('avg_hours'),
                     func.count(Ticket.id).label('count')
                 )
@@ -88,7 +91,7 @@ class AnalyticsRepository(BaseRepository):
                 .with_entities(
                     date_trunc.label('timestamp'),
                     func.avg(
-                        extract('epoch', Ticket.resolved_at - Ticket.created_at) / 3600
+                        self._get_time_diff_hours(Ticket.resolved_at, Ticket.created_at)
                     ).label('avg_hours'),
                     func.count(Ticket.id).label('count')
                 )
@@ -157,10 +160,11 @@ class AnalyticsRepository(BaseRepository):
 
         elif metric_type == "response_time":
             query = query.filter(Ticket.first_response_at.isnot(None))
+            time_diff = self._get_time_diff_hours(Ticket.first_response_at, Ticket.created_at)
             stats = query.with_entities(
-                func.avg(extract('epoch', Ticket.first_response_at - Ticket.created_at) / 3600).label('avg'),
-                func.min(extract('epoch', Ticket.first_response_at - Ticket.created_at) / 3600).label('min'),
-                func.max(extract('epoch', Ticket.first_response_at - Ticket.created_at) / 3600).label('max'),
+                func.avg(time_diff).label('avg'),
+                func.min(time_diff).label('min'),
+                func.max(time_diff).label('max'),
                 func.count(Ticket.id).label('count')
             ).first()
 
@@ -174,10 +178,11 @@ class AnalyticsRepository(BaseRepository):
 
         elif metric_type == "resolution_time":
             query = query.filter(Ticket.resolved_at.isnot(None))
+            time_diff = self._get_time_diff_hours(Ticket.resolved_at, Ticket.created_at)
             stats = query.with_entities(
-                func.avg(extract('epoch', Ticket.resolved_at - Ticket.created_at) / 3600).label('avg'),
-                func.min(extract('epoch', Ticket.resolved_at - Ticket.created_at) / 3600).label('min'),
-                func.max(extract('epoch', Ticket.resolved_at - Ticket.created_at) / 3600).label('max'),
+                func.avg(time_diff).label('avg'),
+                func.min(time_diff).label('min'),
+                func.max(time_diff).label('max'),
                 func.count(Ticket.id).label('count')
             ).first()
 
@@ -294,13 +299,13 @@ class AnalyticsRepository(BaseRepository):
         # Response time
         response_time_query = base_query.filter(Ticket.first_response_at.isnot(None))
         avg_response_time = response_time_query.with_entities(
-            func.avg(extract('epoch', Ticket.first_response_at - Ticket.created_at) / 3600)
+            func.avg(self._get_time_diff_hours(Ticket.first_response_at, Ticket.created_at))
         ).scalar()
 
         # Resolution time
         resolution_time_query = base_query.filter(Ticket.resolved_at.isnot(None))
         avg_resolution_time = resolution_time_query.with_entities(
-            func.avg(extract('epoch', Ticket.resolved_at - Ticket.created_at) / 3600)
+            func.avg(self._get_time_diff_hours(Ticket.resolved_at, Ticket.created_at))
         ).scalar()
 
         # Distributions
@@ -322,6 +327,15 @@ class AnalyticsRepository(BaseRepository):
         }
 
     # Helper methods
+    def _get_time_diff_hours(self, end_time, start_time):
+        """Get time difference in hours (database-agnostic)"""
+        if self.is_sqlite:
+            # SQLite: Use julianday which returns days, multiply by 24 for hours
+            return (func.julianday(end_time) - func.julianday(start_time)) * 24
+        else:
+            # PostgreSQL: Use extract epoch to get seconds, divide by 3600 for hours
+            return extract('epoch', end_time - start_time) / 3600
+
     def _apply_filters(self, query, filters: Dict[str, Any]):
         """Apply filters to query"""
         if filters.get("status"):
@@ -339,20 +353,40 @@ class AnalyticsRepository(BaseRepository):
 
     def _get_date_trunc_expression(self, granularity: str):
         """Get date truncation expression based on granularity"""
-        if granularity == "hourly":
-            return func.date_trunc('hour', Ticket.created_at)
-        elif granularity == "daily":
-            return func.date_trunc('day', Ticket.created_at)
-        elif granularity == "weekly":
-            return func.date_trunc('week', Ticket.created_at)
-        elif granularity == "monthly":
-            return func.date_trunc('month', Ticket.created_at)
-        elif granularity == "quarterly":
-            return func.date_trunc('quarter', Ticket.created_at)
-        elif granularity == "yearly":
-            return func.date_trunc('year', Ticket.created_at)
+        if self.is_sqlite:
+            # SQLite-compatible date truncation using strftime
+            if granularity == "hourly":
+                return func.strftime('%Y-%m-%d %H:00:00', Ticket.created_at)
+            elif granularity == "daily":
+                return func.date(Ticket.created_at)
+            elif granularity == "weekly":
+                # Get start of week (Monday)
+                return func.date(Ticket.created_at, 'weekday 0', '-6 days')
+            elif granularity == "monthly":
+                return func.strftime('%Y-%m-01', Ticket.created_at)
+            elif granularity == "quarterly":
+                # SQLite doesn't have native quarter support, use monthly and group in application
+                return func.strftime('%Y-%m-01', Ticket.created_at)
+            elif granularity == "yearly":
+                return func.strftime('%Y-01-01', Ticket.created_at)
+            else:
+                return func.date(Ticket.created_at)
         else:
-            return func.date_trunc('day', Ticket.created_at)
+            # PostgreSQL date_trunc function
+            if granularity == "hourly":
+                return func.date_trunc('hour', Ticket.created_at)
+            elif granularity == "daily":
+                return func.date_trunc('day', Ticket.created_at)
+            elif granularity == "weekly":
+                return func.date_trunc('week', Ticket.created_at)
+            elif granularity == "monthly":
+                return func.date_trunc('month', Ticket.created_at)
+            elif granularity == "quarterly":
+                return func.date_trunc('quarter', Ticket.created_at)
+            elif granularity == "yearly":
+                return func.date_trunc('year', Ticket.created_at)
+            else:
+                return func.date_trunc('day', Ticket.created_at)
 
     def _group_by_aggregation(self, query, group_by: List[str]) -> Dict[str, Any]:
         """Perform group by aggregation"""

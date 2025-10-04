@@ -1,6 +1,6 @@
-from typing import Optional, List
-from pydantic import validator
-from pydantic_settings import BaseSettings
+from typing import Optional, List, Union
+from pydantic import validator, field_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from functools import lru_cache
 
 
@@ -50,13 +50,8 @@ class Settings(BaseSettings):
     zendesk_token: Optional[str] = None
     zendesk_signing_secret: Optional[str] = None
 
-    # CORS - Add production origins via environment variable
-    backend_cors_origins: List[str] = [
-        "http://localhost:3000",
-        "http://localhost:8000",
-        "http://localhost:5173",
-        "https://zetaai.samuelogboye.com"
-    ]
+    # CORS - Comma-separated string from env, converted to list
+    backend_cors_origins_str: str = "http://localhost:3000,http://localhost:8000,http://localhost:5173,https://zetaai.samuelogboye.com"
 
     # Logging
     log_level: str = "INFO"
@@ -76,16 +71,11 @@ class Settings(BaseSettings):
     # Slack Integration for ML Alerts
     slack_webhook_url: Optional[str] = None
 
-    @validator("backend_cors_origins", pre=True)
-    def assemble_cors_origins(cls, v):
-        if isinstance(v, str):
-            # Handle comma-separated string
-            if v.strip():
-                return [i.strip() for i in v.split(",")]
-            return []
-        elif isinstance(v, list):
-            # Handle list (already parsed)
-            return v
+    @property
+    def backend_cors_origins(self) -> List[str]:
+        """Parse CORS origins from comma-separated string"""
+        if self.backend_cors_origins_str:
+            return [origin.strip() for origin in self.backend_cors_origins_str.split(",") if origin.strip()]
         return []
 
     @property
@@ -107,9 +97,11 @@ class Settings(BaseSettings):
         # Default to SQLite for development
         return f"sqlite:///./{self.sqlite_db_name}"
 
-    class Config:
-        env_file = ".env"
-        case_sensitive = False
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        case_sensitive=False,
+        env_parse_none_str="None"
+    )
 
 
 @lru_cache()

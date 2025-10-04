@@ -21,7 +21,7 @@ class User(Base):
     full_name = Column(String(255), nullable=False)
     is_active = Column(Boolean, default=True, nullable=False)
     is_verified = Column(Boolean, default=False, nullable=False)
-    role = Column(sa.Enum(UserRole), default=UserRole.USER, nullable=False)
+    role = Column(String(10), default=UserRole.USER.value, nullable=False)
 
     # Organization relationship
     organization_id = Column(Integer, ForeignKey("organizations.id"), nullable=True)

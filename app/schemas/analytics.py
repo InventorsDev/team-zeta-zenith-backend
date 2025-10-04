@@ -17,9 +17,11 @@ class TimeGranularity(str, Enum):
 class MetricType(str, Enum):
     """Available metric types"""
     TICKET_COUNT = "ticket_count"
+    TICKET_VOLUME = "ticket_volume"  # Alias for ticket_count
     RESPONSE_TIME = "response_time"
     RESOLUTION_TIME = "resolution_time"
     SENTIMENT_SCORE = "sentiment_score"
+    AVG_SENTIMENT = "avg_sentiment"  # Alias for sentiment_score
     CATEGORY_DISTRIBUTION = "category_distribution"
     CHANNEL_DISTRIBUTION = "channel_distribution"
     PRIORITY_DISTRIBUTION = "priority_distribution"

@@ -8,6 +8,7 @@ from sqlalchemy import (
     Float,
     JSON,
     Boolean,
+    Index,
 )
 from sqlalchemy.orm import relationship
 from .base import Base
@@ -93,6 +94,26 @@ class Ticket(Base):
     # Processing flags
     is_processed = Column(Boolean, default=False, nullable=False)
     needs_human_review = Column(Boolean, default=False, nullable=False)
+
+    # Composite indexes for common query patterns
+    __table_args__ = (
+        # Organization + status queries (list tickets by org and status)
+        Index('ix_tickets_org_status', 'organization_id', 'status'),
+        # Organization + created_at (time-series analytics)
+        Index('ix_tickets_org_created', 'organization_id', 'created_at'),
+        # Organization + priority (high priority ticket filtering)
+        Index('ix_tickets_org_priority', 'organization_id', 'priority', 'status'),
+        # Organization + assigned user (user's assigned tickets)
+        Index('ix_tickets_org_assigned', 'organization_id', 'assigned_to', 'status'),
+        # Organization + category (analytics by category)
+        Index('ix_tickets_org_category', 'organization_id', 'category'),
+        # Organization + sentiment (sentiment analysis queries)
+        Index('ix_tickets_org_sentiment', 'organization_id', 'sentiment_score'),
+        # Unprocessed tickets (ML processing queue)
+        Index('ix_tickets_unprocessed', 'organization_id', 'is_processed', 'created_at'),
+        # Last activity (finding stale tickets)
+        Index('ix_tickets_org_activity', 'organization_id', 'last_activity_at'),
+    )
 
     def __repr__(self):
         return f"<Ticket(title='{self.title[:50]}...', status='{self.status}')>"

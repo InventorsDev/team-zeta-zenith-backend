@@ -6,6 +6,7 @@ import hashlib
 
 from app.database.repositories.analytics_repository import AnalyticsRepository
 from app.cache.cache_manager import CacheManager
+from app.cache.cache_strategies import get_cache, CacheTTL
 from app.schemas.analytics import (
     TimeSeriesDataPoint,
     TimeSeriesResponse,
@@ -25,6 +26,7 @@ class AnalyticsService:
         self.db = db
         self.repository = AnalyticsRepository(db)
         self.cache_manager = cache_manager
+        self.advanced_cache = get_cache()  # Use advanced caching strategy
         self.default_cache_ttl = 3600  # 1 hour
 
     def _generate_cache_key(self, prefix: str, **kwargs) -> str:

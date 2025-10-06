@@ -1,6 +1,7 @@
 import logging
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import ORJSONResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from contextlib import asynccontextmanager
@@ -12,6 +13,10 @@ from app.api.middleware.rate_limitting import AuthRateLimitMiddleware
 from app.api.middleware.security_headers import SecurityHeadersMiddleware
 from app.api.middleware.audit_middleware import AuditMiddleware
 from app.api.middleware.global_rate_limit import GlobalRateLimitMiddleware
+from app.api.middleware.performance_monitoring import (
+    PerformanceMonitoringMiddleware,
+    set_performance_monitor,
+)
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -49,7 +54,17 @@ app = FastAPI(
     version=settings.app_version,
     description="AI-Powered Customer Support Analyzer Backend API",
     lifespan=lifespan,
+    default_response_class=ORJSONResponse,  # Use orjson for 5-10x faster JSON serialization
 )
+
+# Add performance monitoring middleware (first to measure total response time)
+perf_monitor = PerformanceMonitoringMiddleware(
+    app,
+    slow_threshold_ms=200,      # Log warning for endpoints >200ms
+    very_slow_threshold_ms=1000,  # Log error for endpoints >1000ms
+)
+app.add_middleware(lambda app: perf_monitor)
+set_performance_monitor(perf_monitor)
 
 # Add security headers middleware (applies to all responses)
 app.add_middleware(SecurityHeadersMiddleware)

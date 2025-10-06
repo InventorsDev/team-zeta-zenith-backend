@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, DateTime
+from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, DateTime, Index
 from sqlalchemy.orm import relationship
 from .base import Base
 from enum import Enum
@@ -34,6 +34,14 @@ class User(Base):
     # Preferences
     email_notifications = Column(Boolean, default=True, nullable=False)
     slack_notifications = Column(Boolean, default=True, nullable=False)
+
+    # Composite indexes for common query patterns
+    __table_args__ = (
+        # Organization users lookup (list users by org)
+        Index('ix_users_org_active', 'organization_id', 'is_active'),
+        # Role-based queries (find all admins in org)
+        Index('ix_users_org_role', 'organization_id', 'role'),
+    )
 
     def __repr__(self):
         return f"<User(email='{self.email}', full_name='{self.full_name}')>"

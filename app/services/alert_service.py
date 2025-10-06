@@ -9,6 +9,8 @@ import logging
 
 from app.models.ticket import Ticket
 from app.models.alert import Alert
+from app.models.alert_rule import AlertRule
+from app.schemas.alert import AlertRuleCreate, AlertRuleUpdate
 
 logger = logging.getLogger(__name__)
 
@@ -262,3 +264,259 @@ class AlertService:
                 "critical_alerts": 0,
                 "resolved_alerts": 0
             }
+
+    # Alert Rule CRUD Operations
+
+    def create_alert_rule(
+        self,
+        organization_id: int,
+        rule_data: AlertRuleCreate,
+        created_by: int
+    ) -> AlertRule:
+        """Create a new alert rule"""
+        rule = AlertRule(
+            organization_id=organization_id,
+            name=rule_data.name,
+            description=rule_data.description,
+            is_active=rule_data.is_active,
+            conditions=[cond.dict() for cond in rule_data.conditions],
+            logic=rule_data.logic,
+            alert_type=rule_data.alert_type,
+            severity=rule_data.severity,
+            notification_channels=rule_data.notification_channels,
+            notification_config=rule_data.notification_config or {},
+            cooldown_minutes=rule_data.cooldown_minutes or 60,
+            max_triggers_per_day=rule_data.max_triggers_per_day,
+            title_template=rule_data.title_template,
+            message_template=rule_data.message_template,
+            created_by=created_by
+        )
+
+        self.db.add(rule)
+        self.db.commit()
+        self.db.refresh(rule)
+
+        logger.info(f"Created alert rule '{rule.name}' for organization {organization_id}")
+        return rule
+
+    def get_alert_rule(self, rule_id: int, organization_id: int) -> Optional[AlertRule]:
+        """Get a specific alert rule"""
+        return self.db.query(AlertRule).filter(
+            AlertRule.id == rule_id,
+            AlertRule.organization_id == organization_id
+        ).first()
+
+    def get_alert_rules(
+        self,
+        organization_id: int,
+        is_active: Optional[bool] = None
+    ) -> List[AlertRule]:
+        """Get all alert rules for an organization"""
+        query = self.db.query(AlertRule).filter(
+            AlertRule.organization_id == organization_id
+        )
+
+        if is_active is not None:
+            query = query.filter(AlertRule.is_active == is_active)
+
+        return query.order_by(AlertRule.created_at.desc()).all()
+
+    def update_alert_rule(
+        self,
+        rule_id: int,
+        organization_id: int,
+        rule_data: AlertRuleUpdate
+    ) -> Optional[AlertRule]:
+        """Update an existing alert rule"""
+        rule = self.get_alert_rule(rule_id, organization_id)
+        if not rule:
+            return None
+
+        update_data = rule_data.dict(exclude_unset=True)
+
+        # Convert conditions to dict if present
+        if "conditions" in update_data and update_data["conditions"]:
+            update_data["conditions"] = [cond.dict() for cond in update_data["conditions"]]
+
+        for field, value in update_data.items():
+            setattr(rule, field, value)
+
+        rule.updated_at = datetime.utcnow()
+        self.db.commit()
+        self.db.refresh(rule)
+
+        logger.info(f"Updated alert rule {rule_id}")
+        return rule
+
+    def delete_alert_rule(self, rule_id: int, organization_id: int) -> bool:
+        """Delete an alert rule"""
+        rule = self.get_alert_rule(rule_id, organization_id)
+        if not rule:
+            return False
+
+        self.db.delete(rule)
+        self.db.commit()
+
+        logger.info(f"Deleted alert rule {rule_id}")
+        return True
+
+    def evaluate_rule_conditions(
+        self,
+        ticket: Ticket,
+        conditions: List[Dict[str, Any]],
+        logic: str = "AND"
+    ) -> bool:
+        """
+        Evaluate if a ticket matches alert rule conditions
+
+        Args:
+            ticket: Ticket to evaluate
+            conditions: List of condition dictionaries
+            logic: "AND" or "OR" logic for multiple conditions
+
+        Returns:
+            True if conditions are met, False otherwise
+        """
+        if not conditions:
+            return False
+
+        results = []
+
+        for condition in conditions:
+            field = condition.get("field")
+            operator = condition.get("operator")
+            value = condition.get("value")
+
+            # Get ticket field value
+            ticket_value = getattr(ticket, field, None)
+
+            # Evaluate condition
+            result = False
+            if operator == "eq":
+                result = ticket_value == value
+            elif operator == "ne":
+                result = ticket_value != value
+            elif operator == "gt":
+                result = ticket_value is not None and float(ticket_value) > float(value)
+            elif operator == "lt":
+                result = ticket_value is not None and float(ticket_value) < float(value)
+            elif operator == "gte":
+                result = ticket_value is not None and float(ticket_value) >= float(value)
+            elif operator == "lte":
+                result = ticket_value is not None and float(ticket_value) <= float(value)
+            elif operator == "contains":
+                result = ticket_value is not None and str(value).lower() in str(ticket_value).lower()
+            elif operator == "in":
+                result = ticket_value in value if isinstance(value, list) else False
+
+            results.append(result)
+
+        # Apply logic
+        if logic == "OR":
+            return any(results)
+        else:  # AND
+            return all(results)
+
+    def check_cooldown(self, rule: AlertRule, ticket_id: int) -> bool:
+        """
+        Check if cooldown period has passed for this rule and ticket
+
+        Returns:
+            True if alert can be triggered, False if still in cooldown
+        """
+        if not rule.last_triggered_at:
+            return True
+
+        # Check if this specific ticket was recently alerted
+        if isinstance(rule.last_triggered_at, dict):
+            last_trigger = rule.last_triggered_at.get(str(ticket_id))
+            if last_trigger:
+                last_time = datetime.fromisoformat(last_trigger)
+                cooldown_end = last_time.timestamp() + (rule.cooldown_minutes * 60)
+                return datetime.utcnow().timestamp() > cooldown_end
+
+        return True
+
+    def check_daily_limit(self, rule: AlertRule) -> bool:
+        """
+        Check if rule has exceeded daily trigger limit
+
+        Returns:
+            True if alert can be triggered, False if limit reached
+        """
+        if not rule.max_triggers_per_day:
+            return True
+
+        # This is a simplified check - in production, track per-day counts
+        return rule.trigger_count < rule.max_triggers_per_day
+
+    def trigger_alert_from_rule(
+        self,
+        rule: AlertRule,
+        ticket: Ticket
+    ) -> Optional[Alert]:
+        """
+        Trigger an alert based on a rule match
+
+        Args:
+            rule: AlertRule that matched
+            ticket: Ticket that triggered the rule
+
+        Returns:
+            Created Alert or None
+        """
+        try:
+            # Check cooldown and limits
+            if not self.check_cooldown(rule, ticket.id):
+                logger.debug(f"Rule {rule.id} in cooldown for ticket {ticket.id}")
+                return None
+
+            if not self.check_daily_limit(rule):
+                logger.warning(f"Rule {rule.id} has reached daily limit")
+                return None
+
+            # Format title and message using templates
+            title = rule.title_template or f"{rule.name}: {ticket.title}"
+            message = rule.message_template or f"Alert triggered by rule '{rule.name}'"
+
+            # Simple template variable substitution
+            title = title.format(ticket=ticket, rule=rule)
+            message = message.format(ticket=ticket, rule=rule)
+
+            # Create alert
+            alert = Alert(
+                ticket_id=ticket.id,
+                organization_id=ticket.organization_id,
+                alert_type=rule.alert_type,
+                severity=rule.severity,
+                title=title,
+                message=message,
+                notification_channels=rule.notification_channels,
+                alert_metadata={
+                    "rule_id": rule.id,
+                    "rule_name": rule.name,
+                    "ticket_priority": ticket.priority,
+                    "ticket_status": ticket.status,
+                    "triggered_at": datetime.utcnow().isoformat()
+                },
+                is_resolved=False
+            )
+
+            self.db.add(alert)
+
+            # Update rule trigger tracking
+            rule.trigger_count += 1
+            if not rule.last_triggered_at:
+                rule.last_triggered_at = {}
+            rule.last_triggered_at[str(ticket.id)] = datetime.utcnow().isoformat()
+
+            self.db.commit()
+            self.db.refresh(alert)
+
+            logger.info(f"Triggered alert from rule {rule.id} for ticket {ticket.id}")
+            return alert
+
+        except Exception as e:
+            logger.error(f"Error triggering alert from rule {rule.id}: {e}")
+            self.db.rollback()
+            return None

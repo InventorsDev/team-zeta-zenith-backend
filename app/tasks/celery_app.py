@@ -43,6 +43,15 @@ celery_app.conf.beat_schedule = {
         "task": "app.tasks.sync_tasks.process_email_tickets",
         "schedule": 600.0,  # Every 10 minutes
     },
+    "evaluate-alert-rules": {
+        "task": "evaluate_alert_rules",
+        "schedule": 300.0,  # Every 5 minutes - evaluate all active alert rules
+    },
+    "cleanup-old-alerts": {
+        "task": "cleanup_old_alerts",
+        "schedule": 86400.0,  # Every 24 hours - cleanup old resolved alerts
+        "kwargs": {"days": 90},  # Delete alerts older than 90 days
+    },
     "cleanup-old-tasks": {
         "task": "app.tasks.cleanup_tasks.cleanup_old_task_results",
         "schedule": 3600.0,  # Every hour

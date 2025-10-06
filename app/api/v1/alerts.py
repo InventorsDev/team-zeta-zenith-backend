@@ -13,6 +13,7 @@ from app.database.connection import get_db
 from app.models.user import User
 from app.models.alert import Alert
 from app.models.ticket import Ticket
+from app.services.alert_service import AlertService
 from app.schemas.alert import (
     AlertResponse,
     AlertCreate,
@@ -82,16 +83,19 @@ async def get_alerts(
 
 @router.get("/rules", response_model=List[AlertRuleResponse])
 async def get_alert_rules(
+    is_active: Optional[bool] = None,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
     Get all alert rules for the current organization
-    Note: Alert rules are stored in alert_metadata for now
-    This is a placeholder implementation
     """
-    # TODO: Implement proper alert rules storage table
-    return []
+    alert_service = AlertService(db)
+    rules = alert_service.get_alert_rules(
+        organization_id=current_user.organization_id,
+        is_active=is_active
+    )
+    return [AlertRuleResponse.from_orm(rule) for rule in rules]
 
 
 @router.post("/rules", response_model=AlertRuleResponse, status_code=status.HTTP_201_CREATED)
@@ -103,12 +107,13 @@ async def create_alert_rule(
     """
     Create a new alert rule
     """
-    # TODO: Implement proper alert rules storage
-    # For now, return a mock response
-    raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail="Alert rules creation not yet implemented. Rules will be added in a future update."
+    alert_service = AlertService(db)
+    rule = alert_service.create_alert_rule(
+        organization_id=current_user.organization_id,
+        rule_data=rule_data,
+        created_by=current_user.id
     )
+    return AlertRuleResponse.from_orm(rule)
 
 
 @router.post("/rules/test", response_model=AlertRuleTestResponse)
@@ -188,11 +193,16 @@ async def get_alert_rule(
     """
     Get a specific alert rule by ID
     """
-    # TODO: Implement proper alert rules storage
-    raise HTTPException(
-        status_code=status.HTTP_404_NOT_FOUND,
-        detail="Alert rule not found"
-    )
+    alert_service = AlertService(db)
+    rule = alert_service.get_alert_rule(rule_id, current_user.organization_id)
+
+    if not rule:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Alert rule not found"
+        )
+
+    return AlertRuleResponse.from_orm(rule)
 
 
 @router.put("/rules/{rule_id}", response_model=AlertRuleResponse)
@@ -205,11 +215,20 @@ async def update_alert_rule(
     """
     Update an existing alert rule
     """
-    # TODO: Implement proper alert rules storage
-    raise HTTPException(
-        status_code=status.HTTP_404_NOT_FOUND,
-        detail="Alert rule not found"
+    alert_service = AlertService(db)
+    rule = alert_service.update_alert_rule(
+        rule_id=rule_id,
+        organization_id=current_user.organization_id,
+        rule_data=rule_data
     )
+
+    if not rule:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Alert rule not found"
+        )
+
+    return AlertRuleResponse.from_orm(rule)
 
 
 @router.delete("/rules/{rule_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -221,11 +240,17 @@ async def delete_alert_rule(
     """
     Delete an alert rule
     """
-    # TODO: Implement proper alert rules storage
-    raise HTTPException(
-        status_code=status.HTTP_404_NOT_FOUND,
-        detail="Alert rule not found"
+    alert_service = AlertService(db)
+    success = alert_service.delete_alert_rule(
+        rule_id=rule_id,
+        organization_id=current_user.organization_id
     )
+
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Alert rule not found"
+        )
 
 
 # Notification Preferences Endpoints (must be before /{alert_id} to avoid route conflicts)

@@ -6,6 +6,7 @@ from .integration import Integration, IntegrationType, IntegrationStatus, SlackI
 from .email_integration import EmailIntegration, EmailProcessingLog
 from .analytics import AnalyticsMetric, AnalyticsSnapshot, MetricType, TimeGranularity
 from .alert import Alert, AlertType, AlertSeverity
+from .alert_rule import AlertRule
 from .classification import ClassificationResult
 
 __all__ = [
@@ -30,5 +31,6 @@ __all__ = [
     "Alert",
     "AlertType",
     "AlertSeverity",
+    "AlertRule",
     "ClassificationResult",
 ]

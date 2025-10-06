@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from app.database.connection import get_db
 from app.services.auth_service import AuthService
+from app.services.audit_service import AuditService
 from app.schemas.user import UserCreate, UserLogin, TokenResponse, UserResponse
 from app.core.security import decode_access_token
 from app.models.user import User
@@ -11,7 +12,11 @@ router = APIRouter(prefix="/auth", tags=["authentication"])
 security = HTTPBearer()
 
 
-def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security), db: Session = Depends(get_db)) -> User:
+def get_current_user(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: Session = Depends(get_db),
+    request: Request = None
+) -> User:
     """Dependency to get current authenticated user"""
     token = credentials.credentials
     payload = decode_access_token(token)
@@ -24,7 +29,14 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
         )
 
     auth_service = AuthService(db)
-    return auth_service.get_current_user(payload)
+    user = auth_service.get_current_user(payload)
+
+    # Store user context in request state for audit middleware
+    if request:
+        request.state.user_id = user.id
+        request.state.organization_id = user.organization_id
+
+    return user
 
 
 def get_current_user_ws(token: str = Query(...), db: Session = Depends(get_db)) -> User:
@@ -42,17 +54,78 @@ def get_current_user_ws(token: str = Query(...), db: Session = Depends(get_db)) 
 
 
 @router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
-async def register(user_data: UserCreate, db: Session = Depends(get_db)):
+async def register(user_data: UserCreate, request: Request, db: Session = Depends(get_db)):
     """Register a new user account"""
     auth_service = AuthService(db)
-    return auth_service.register_user(user_data)
+    audit_service = AuditService(db)
+
+    # Get client IP
+    ip_address = request.client.host if request.client else None
+    user_agent = request.headers.get("user-agent", "")
+
+    try:
+        result = auth_service.register_user(user_data)
+
+        # Log successful registration
+        audit_service.log_action(
+            action="auth.register",
+            status="success",
+            ip_address=ip_address,
+            user_agent=user_agent,
+            endpoint="/api/v1/auth/register",
+            http_method="POST",
+            details={"email": user_data.email},
+            severity="info"
+        )
+
+        return result
+    except Exception as e:
+        # Log failed registration
+        audit_service.log_action(
+            action="auth.register",
+            status="failure",
+            ip_address=ip_address,
+            user_agent=user_agent,
+            endpoint="/api/v1/auth/register",
+            http_method="POST",
+            details={"email": user_data.email, "error": str(e)},
+            severity="warning"
+        )
+        raise
 
 
 @router.post("/login", response_model=TokenResponse)
-async def login(login_data: UserLogin, db: Session = Depends(get_db)):
+async def login(login_data: UserLogin, request: Request, db: Session = Depends(get_db)):
     """Authenticate user and return access token"""
     auth_service = AuthService(db)
-    return auth_service.login_user(login_data)
+    audit_service = AuditService(db)
+
+    # Get client IP
+    ip_address = request.client.host if request.client else None
+    user_agent = request.headers.get("user-agent", "")
+
+    try:
+        result = auth_service.login_user(login_data)
+
+        # Log successful login
+        audit_service.log_auth_attempt(
+            username=login_data.email,
+            success=True,
+            ip_address=ip_address,
+            user_agent=user_agent
+        )
+
+        return result
+    except HTTPException as e:
+        # Log failed login
+        audit_service.log_auth_attempt(
+            username=login_data.email,
+            success=False,
+            ip_address=ip_address,
+            user_agent=user_agent,
+            reason=e.detail
+        )
+        raise
 
 
 @router.get("/me", response_model=UserResponse)

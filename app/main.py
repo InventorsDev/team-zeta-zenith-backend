@@ -9,6 +9,9 @@ from app.core.config import get_settings
 from app.database.connection import get_db, create_tables
 from app.api.v1.router import api_router
 from app.api.middleware.rate_limitting import AuthRateLimitMiddleware
+from app.api.middleware.security_headers import SecurityHeadersMiddleware
+from app.api.middleware.audit_middleware import AuditMiddleware
+from app.api.middleware.global_rate_limit import GlobalRateLimitMiddleware
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -48,6 +51,12 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# Add security headers middleware (applies to all responses)
+app.add_middleware(SecurityHeadersMiddleware)
+
+# Add audit logging middleware
+app.add_middleware(AuditMiddleware)
+
 # Set up CORS
 app.add_middleware(
     CORSMiddleware,
@@ -57,8 +66,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Add rate limiting middleware for auth endpoints
-app.add_middleware(AuthRateLimitMiddleware)
+# Add global rate limiting middleware (applies to all API endpoints)
+app.add_middleware(
+    GlobalRateLimitMiddleware,
+    ip_calls=60,         # 60 requests/min for anonymous users
+    user_calls=300,      # 300 requests/min for authenticated users
+    org_calls=5000,      # 5000 requests/min per organization
+)
 
 
 @app.get("/health")

@@ -52,9 +52,108 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title=settings.app_name,
     version=settings.app_version,
-    description="AI-Powered Customer Support Analyzer Backend API",
+    description="""
+# AI-Powered Customer Support Analyzer Backend API
+
+An intelligent customer support platform that uses AI/ML to analyze tickets, detect sentiment,
+categorize issues, and provide actionable insights.
+
+## Features
+
+* **Ticket Management**: Complete CRUD operations for support tickets
+* **AI Analysis**: Sentiment analysis, urgency detection, and automatic categorization
+* **Analytics**: Real-time dashboards and time-series metrics
+* **Alert System**: Configurable rules with multi-channel notifications
+* **Integrations**: Zendesk, Slack, and Email support
+* **Security**: JWT authentication, RBAC, API keys, audit logging
+* **Performance**: Optimized queries, connection pooling, Redis caching
+
+## Authentication
+
+Most endpoints require authentication via JWT tokens or API keys:
+
+### JWT Token Authentication:
+1. Register or login to get an access token
+2. Include token in Authorization header: `Bearer <token>`
+
+### API Key Authentication:
+1. Create an API key (admin only)
+2. Include key in X-API-Key header
+
+## Rate Limiting
+
+- **Anonymous**: 60 requests/minute per IP
+- **Authenticated**: 300 requests/minute per user
+- **Organization**: 5000 requests/minute shared quota
+
+## Support
+
+- Documentation: https://docs.example.com
+- API Status: /health
+- Issues: https://github.com/example/issues
+    """,
     lifespan=lifespan,
     default_response_class=ORJSONResponse,  # Use orjson for 5-10x faster JSON serialization
+    # OpenAPI documentation settings
+    docs_url="/docs",
+    redoc_url="/redoc",
+    openapi_url="/openapi.json",
+    contact={
+        "name": "API Support",
+        "email": "support@example.com",
+    },
+    license_info={
+        "name": "MIT License",
+        "url": "https://opensource.org/licenses/MIT",
+    },
+    servers=[
+        {
+            "url": "http://localhost:8000",
+            "description": "Development server"
+        },
+        {
+            "url": "https://zetaapi.samuelogboye.com",
+            "description": "Production server"
+        }
+    ],
+    tags_metadata=[
+        {
+            "name": "authentication",
+            "description": "User authentication and authorization operations"
+        },
+        {
+            "name": "tickets",
+            "description": "Ticket management operations"
+        },
+        {
+            "name": "analytics",
+            "description": "Analytics and reporting endpoints"
+        },
+        {
+            "name": "alerts",
+            "description": "Alert rules and notifications"
+        },
+        {
+            "name": "integrations",
+            "description": "External service integrations (Zendesk, Slack, Email)"
+        },
+        {
+            "name": "ml",
+            "description": "Machine learning model operations"
+        },
+        {
+            "name": "api-keys",
+            "description": "API key management for programmatic access"
+        },
+        {
+            "name": "audit",
+            "description": "Audit log access (admin only)"
+        },
+        {
+            "name": "organizations",
+            "description": "Organization management"
+        },
+    ]
 )
 
 # Add performance monitoring middleware (first to measure total response time)

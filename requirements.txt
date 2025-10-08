@@ -61,9 +61,15 @@ email-validator==2.1.0
 python-dateutil==2.8.2
 pytz==2023.3
 
-# Development
+# Development and Testing
 pytest==7.4.3
 pytest-asyncio==0.21.1
+pytest-cov==4.1.0          # Coverage reporting
+pytest-xdist==3.5.0        # Parallel test execution
+pytest-mock==3.12.0        # Mocking support
+httpx==0.25.2              # Already included above, used for TestClient
+faker==20.1.0              # Generate fake test data
+freezegun==1.4.0           # Mock datetime
 black==23.11.0
 ruff==0.1.6
 
